@@ -47,7 +47,7 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    dbn.negative_log_likelihood(t)
+    dbn.loss(t)
     + L1_reg * dbn.L1
     + L2_reg * dbn.L2_sqr
 )
@@ -73,8 +73,8 @@ sgdem(dataset=dataset,
 
 print "compiling the prediction function"
 
-predict = theano.function(inputs=[x], outputs=dbn.output)
-distribution = theano.function(inputs=[x], outputs=dbn.outputDistribution)
+predict = theano.function(inputs=[x], outputs=dbn.pred)
+distribution = theano.function(inputs=[x], outputs=dbn.output)
 
 
 print "predicting the first 10 samples of the test dataset"

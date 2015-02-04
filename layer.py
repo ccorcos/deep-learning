@@ -15,6 +15,12 @@ relu = lambda x: T.switch(x<0, 0, x)
 cappedrelu =  lambda x: T.minimum(T.switch(x<0, 0, x), 6)
 sigmoid = T.nnet.sigmoid
 tanh = T.tanh
+# softmax = T.nnet.softmax
+
+def softmax(x):
+    e_x = T.exp(x - x.max(axis=1, keepdims=True)) 
+    out = e_x / e_x.sum(axis=1, keepdims=True)
+    return out
 
 activations = {
     'relu': relu,
@@ -22,7 +28,7 @@ activations = {
     'sigmoid': sigmoid,
     'tanh': tanh,
     'linear': lambda x: x,
-    'softmax': T.nnet.softmax
+    'softmax': softmax
 }
 
 """
@@ -90,7 +96,9 @@ class LogisticRegression(object):
         # x is a matrix where row-j represents input training sample-j
         # b is a vector where element-k represent the free parameter of hyper
         # plain-k
-        self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
+
+        output_linear = T.dot(input, self.W) + self.b
+        self.p_y_given_x = softmax(output_linear)
 
         # symbolic description of how to compute prediction as class whose
         # probability is maximal
@@ -186,8 +194,8 @@ class HiddenLayer(object):
         self.W = W
         self.b = b
 
-        lin_output = T.dot(input, self.W) + self.b
-        self.output = (lin_output if activation is None else activations[activation](lin_output))
+        output_linear = T.dot(input, self.W) + self.b
+        self.output = (output_linear if activation is None else activations[activation](output_linear))
        
         if dropout_rate > 0:
             srng = theano.tensor.shared_randomstreams.RandomStreams(rng.randint(999999))
@@ -200,6 +208,58 @@ class HiddenLayer(object):
 
         self.L1 = abs(self.W).sum()
         self.L2_sqr = (self.W ** 2).sum()
+
+        if activation == 'linear':
+            self.loss = self.mse
+            self.errors = self.mse
+            self.pred = self.output
+        elif activation == 'sigmoid':
+            # I was having trouble here with ints and floats. Good question what exactly was going on.
+            # I decided to settle with floats and use MSE. Seems to work after all...
+            self.loss = self.nll_binary
+            self.errors = self.predictionErrors
+            self.pred = T.round(self.output)  # round to {0,1}
+        elif activation == 'softmax':
+            # This is a pain in the ass!
+            self.loss = self.nll_multiclass
+            self.errors = self.predictionErrors
+            self.pred = T.argmax(self.output, axis=-1)
+        else:
+            pass
+            # raise NotImplementedError
+
+
+    def mse(self, y):
+        # error between output and target
+        return T.mean((self.output - y) ** 2)
+
+    def nll_binary(self, y):
+        # negative log likelihood based on binary cross entropy error
+        return T.mean(T.nnet.binary_crossentropy(self.output, y))
+
+    def nll_multiclass(self, y):
+        return -T.mean(T.log(self.output)[T.arange(y.shape[0]), y])
+
+    def predictionErrors(self, y):
+        """Return a float representing the number of errors in the minibatch
+        over the total number of examples of the minibatch ; zero one
+        loss over the size of the minibatch
+
+        :type y: theano.tensor.TensorType
+        :param y: corresponds to a vector that gives for each example the
+                  correct label
+        """
+        # check if y has same dimension of y_pred
+        if y.ndim != self.pred.ndim:
+            raise TypeError('y should have the same shape as self.pred',
+                ('y', y.type, 'pred', self.pred.type))
+        # check if y is of the correct datatype
+        if y.dtype.startswith('int'):
+            # the T.neq operator returns a vector of 0s and 1s, where 1
+            # represents a mistake in prediction
+            return T.mean(T.neq(self.pred, y))
+        else:
+            raise NotImplementedError()
        
 class ForwardFeed(object):
     """ForwardFeed Class
@@ -290,7 +350,7 @@ class MLP(object):
     sigmoid function  while the top layer is a softamx layer.
     """
 
-    def __init__(self, rng, input, n_in, n_hidden, n_out, dropout_rate=0, activation='tanh', params=None):
+    def __init__(self, rng, input, n_in, n_hidden, n_out, dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -318,23 +378,25 @@ class MLP(object):
             params=maybe(lambda: params[0])
         )
 
-        self.logRegressionLayer = LogisticRegression(
+        self.outputLayer = HiddenLayer(
+            rng=rng,
             input=self.hiddenLayer.output,
             n_in=n_hidden,
+            dropout_rate=0,
             n_out=n_out,
-            params=maybe(lambda:params[1])
+            activation=outputActivation,
+            params=maybe(lambda: params[1])
         )
 
-        self.layers = [self.hiddenLayer, self.logRegressionLayer]
+        self.layers = [self.hiddenLayer, self.outputLayer]
         self.params = map(lambda x: x.params, self.layers)
         self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
         self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
 
-        self.negative_log_likelihood = self.logRegressionLayer.negative_log_likelihood
-        self.errors = self.logRegressionLayer.errors
-
-        self.output = self.logRegressionLayer.y_pred
-        self.outputDistribution = self.logRegressionLayer.p_y_given_x
+        self.loss = self.layers[-1].loss
+        self.errors = self.layers[-1].errors
+        self.output = self.layers[-1].output
+        self.pred = self.layers[-1].pred
 
 class DBN(object):
     """Deep Belief Network Class
@@ -343,7 +405,7 @@ class DBN(object):
     that has many layers of hidden units and nonlinear activations.
     """
 
-    def __init__(self, rng, input, n_in, n_out, layer_sizes=[], dropout_rate=0, activation='tanh', params=None):
+    def __init__(self, rng, input, n_in, n_out, layer_sizes=[], dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -370,23 +432,25 @@ class DBN(object):
             params=maybe(lambda: params[0])
         )
 
-        self.logRegressionLayer = LogisticRegression(
+        self.outputLayer = HiddenLayer(
+            rng=rng,
             input=self.ff.output,
             n_in=layer_sizes[-1],
+            dropout_rate=0,
             n_out=n_out,
-            params=maybe(lambda:params[1])
+            activation=outputActivation,
+            params=maybe(lambda: params[1])
         )
 
-        self.layers = [self.ff, self.logRegressionLayer]
+        self.layers = [self.ff, self.outputLayer]
         self.params = map(lambda x: x.params, self.layers)
         self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
         self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
 
-        self.negative_log_likelihood = self.logRegressionLayer.negative_log_likelihood
-        self.errors = self.logRegressionLayer.errors
-
-        self.output = self.logRegressionLayer.y_pred
-        self.outputDistribution = self.logRegressionLayer.p_y_given_x
+        self.loss = self.layers[-1].loss
+        self.errors = self.layers[-1].errors
+        self.output = self.layers[-1].output
+        self.pred = self.layers[-1].pred
 
 class DBNPC(object):
     """A Parallel Column Deep Belief Network Class
@@ -395,7 +459,7 @@ class DBNPC(object):
     but pool together their hidden layers into columns at intermitten layers.
     """
 
-    def __init__(self, rng, input, n_in, n_out, ff_sizes=[], n_parallel=1, dropout_rate=0, activation='tanh', params=None):
+    def __init__(self, rng, input, n_in, n_out, ff_sizes=[], n_parallel=1, dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -436,25 +500,27 @@ class DBNPC(object):
             ffcs.append(ffc)
 
 
-        self.logRegressionLayer = LogisticRegression(
+        self.outputLayer = HiddenLayer(
+            rng=rng,
             input=ffcs[-1].output,
             n_in=ff_sizes[-1][-1],
+            dropout_rate=0,
             n_out=n_out,
-            params=maybe(lambda:params[-1])
+            activation=outputActivation,
+            params=maybe(lambda: params[-1])
         )
 
         self.ffcs = ffcs
 
-        self.layers = self.ffcs + [self.logRegressionLayer]
+        self.layers = self.ffcs + [self.outputLayer]
         self.params = map(lambda x: x.params, self.layers)
         self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
         self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
 
-        self.negative_log_likelihood = self.logRegressionLayer.negative_log_likelihood
-        self.errors = self.logRegressionLayer.errors
-
-        self.output = self.logRegressionLayer.y_pred
-        self.outputDistribution = self.logRegressionLayer.p_y_given_x
+        self.loss = self.layers[-1].loss
+        self.errors = self.layers[-1].errors
+        self.output = self.layers[-1].output
+        self.pred = self.layers[-1].pred
 
 
 
@@ -475,7 +541,7 @@ class Recurrence(object):
             h_t = theano.clone(recurrent_t, replace={
                 input_t: x_t, 
                 recurrent_tm1: h_tm1
-            })
+            })       
             y_t = theano.clone(output_t, replace={
                 recurrent_t: h_t
             })
@@ -549,8 +615,6 @@ class RNN(object):
 
         self.h0 = h0
 
-
-
         # Create the computation graph
         h_tm1 = T.matrix('h_tm1') # n_examples, n_hidden @ t-1
         x_t = T.matrix('x_t') # n_examples, n_in @ some specific time
@@ -585,7 +649,7 @@ class RNN(object):
             output_t=y_t, 
             recurrent_t=h_t, 
             recurrent_tm1=h_tm1, 
-            recurrent_0=self.h0
+            recurrent_0=self.h0,
         )
 
         self.output = R.output

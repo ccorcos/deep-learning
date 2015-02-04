@@ -45,7 +45,7 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    mlp.negative_log_likelihood(t)
+    mlp.loss(t)
     + L1_reg * mlp.L1
     + L2_reg * mlp.L2_sqr
 )
@@ -54,17 +54,6 @@ errors = mlp.errors(t)
 params = list(flatten(mlp.params))
 
 print "training the MLP with sgdem"
-
-# sgd(dataset=dataset,
-#     inputs=x,
-#     targets=t,
-#     cost=cost,
-#     params=params,
-#     errors=errors,
-#     learning_rate=0.01, 
-#     n_epochs=1000,
-#     batch_size=20)
-
 sgdem(dataset=dataset,
     inputs=x,
     targets=t,
@@ -80,7 +69,7 @@ sgdem(dataset=dataset,
     improvement_threshold=0.995)
 
 print "compiling the prediction function"
-predict = theano.function(inputs=[x], outputs=mlp.output)
+predict = theano.function(inputs=[x], outputs=mlp.pred)
 
 print "predicting the first 10 samples of the test dataset"
 print "predict:", predict(mnist[2][0][0:10])
