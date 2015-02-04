@@ -70,8 +70,8 @@ hf.train(gradient_dataset, cg_dataset, initial_lambda=0.5, mu=1.0, preconditione
 
 print "compiling the prediction function"
 
-predict = theano.function(inputs=[x], outputs=dbn.output)
-distribution = theano.function(inputs=[x], outputs=dbn.outputDistribution)
+predict = theano.function(inputs=[x], outputs=dbn.pred)
+distribution = theano.function(inputs=[x], outputs=dbn.output)
 
 
 print "predicting the first 10 samples of the test dataset"
