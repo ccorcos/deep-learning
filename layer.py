@@ -15,6 +15,13 @@ relu = lambda x: T.switch(x<0, 0, x)
 cappedrelu =  lambda x: T.minimum(T.switch(x<0, 0, x), 6)
 sigmoid = T.nnet.sigmoid
 tanh = T.tanh
+softmax = T.nnet.softmax
+
+# # you need the bleeding edge Theano to get 'keep_dims'
+# def softmax(x):
+#     e_x = T.exp(x - x.max(axis=1, keep_dims=True)) 
+#     out = e_x / e_x.sum(axis=1, keep_dims=True)
+#     return out
 
 activations = {
     'relu': relu,
@@ -22,7 +29,7 @@ activations = {
     'sigmoid': sigmoid,
     'tanh': tanh,
     'linear': lambda x: x,
-    'softmax': T.nnet.softmax
+    'softmax': softmax
 }
 
 """
@@ -90,7 +97,9 @@ class LogisticRegression(object):
         # x is a matrix where row-j represents input training sample-j
         # b is a vector where element-k represent the free parameter of hyper
         # plain-k
-        self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
+
+        self.output_linear = T.dot(input, self.W) + self.b
+        self.p_y_given_x = T.nnet.softmax(self.output_linear)
 
         # symbolic description of how to compute prediction as class whose
         # probability is maximal
@@ -186,8 +195,8 @@ class HiddenLayer(object):
         self.W = W
         self.b = b
 
-        lin_output = T.dot(input, self.W) + self.b
-        self.output = (lin_output if activation is None else activations[activation](lin_output))
+        self.output_linear = T.dot(input, self.W) + self.b
+        self.output = (self.output_linear if activation is None else activations[activation](self.output_linear))
        
         if dropout_rate > 0:
             srng = theano.tensor.shared_randomstreams.RandomStreams(rng.randint(999999))
@@ -235,6 +244,7 @@ class ForwardFeed(object):
 
         self.layers = layers
         self.output = output
+        self.output_linear = layers[-1].output_linear
 
         self.params = map(lambda x: x.params, self.layers)
 
@@ -273,6 +283,7 @@ class ForwardFeedColumn(object):
             ffs.append(ff)
 
         outputs = map(lambda ff: ff.output, ffs)
+        self.output_linear = outputs[T.stacklists(outputs).argmax(axis=0)]
         self.output = T.stacklists(outputs).max(axis=0)
         self.ffs = ffs
 
@@ -325,6 +336,8 @@ class MLP(object):
             params=maybe(lambda:params[1])
         )
 
+        self.output_linear = self.logRegressionLayer.output_linear
+
         self.layers = [self.hiddenLayer, self.logRegressionLayer]
         self.params = map(lambda x: x.params, self.layers)
         self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
@@ -376,6 +389,8 @@ class DBN(object):
             n_out=n_out,
             params=maybe(lambda:params[1])
         )
+
+        self.output_linear = self.logRegressionLayer.output_linear
 
         self.layers = [self.ff, self.logRegressionLayer]
         self.params = map(lambda x: x.params, self.layers)
@@ -445,6 +460,8 @@ class DBNPC(object):
 
         self.ffcs = ffcs
 
+        self.output_linear = self.logRegressionLayer.output_linear
+
         self.layers = self.ffcs + [self.logRegressionLayer]
         self.params = map(lambda x: x.params, self.layers)
         self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
@@ -461,7 +478,7 @@ class DBNPC(object):
 class Recurrence(object):
     """A Reccurence Class which wraps an architecture into a recurrent one."""
 
-    def __init__(self, input, input_t, output_t, recurrent_t, recurrent_tm1, recurrent_0):
+    def __init__(self, input, input_t, output_t, recurrent_t, recurrent_tm1, recurrent_0, output_t_linear, recurrent_t_linear):
         """Initialize the recurrence class with the input, output, the recurrent variable
         and the initial recurrent variable.
 
@@ -472,27 +489,40 @@ class Recurrence(object):
 
         # compute the recurrence
         def step(x_t, h_tm1):
+            h_t_linear = theano.clone(recurrent_t_linear, replace={
+                input_t: x_t, 
+                recurrent_tm1: h_tm1
+            })
             h_t = theano.clone(recurrent_t, replace={
                 input_t: x_t, 
                 recurrent_tm1: h_tm1
             })
+            y_t_linear = theano.clone(output_t_linear, replace={
+                recurrent_t: h_t
+            })            
             y_t = theano.clone(output_t, replace={
                 recurrent_t: h_t
             })
-            return h_t, y_t
+            return h_t, y_t, h_t_linear, y_t_linear
 
         h0_t = T.extra_ops.repeat(recurrent_0[numpy.newaxis, :], input.shape[0], axis=0)
 
-        [h, y], _ = theano.scan(step,
+        [h, y, h_l, y_l], _ = theano.scan(step,
                             sequences=input.dimshuffle(1,0,2), # swap the first two dimensions to scan over n_timesteps
-                            outputs_info=[h0_t, None])
+                            outputs_info=[h0_t, None, None, None])
 
         # swap the dimensions back to (n_examples, n_timesteps, n_out)
         h = h.dimshuffle(1,0,2)
         y = y.dimshuffle(1,0,2)
 
+        h_l = h_l.dimshuffle(1,0,2)
+        y_l = y_l.dimshuffle(1,0,2)
+
         self.output = y
         self.recurrent = h
+
+        self.output_linear = y_l
+        self.recurrent_linear = h_l
 
 
 
@@ -585,11 +615,16 @@ class RNN(object):
             output_t=y_t, 
             recurrent_t=h_t, 
             recurrent_tm1=h_tm1, 
-            recurrent_0=self.h0
+            recurrent_0=self.h0,
+            output_t_linear=self.outputLayer.output_linear,
+            recurrent_t_linear=self.hiddenLayer.output_linear
         )
 
         self.output = R.output
         self.h = R.recurrent
+
+        self.output_linear = R.output_linear
+        self.h_linear = R.recurrent_linear
 
         self.layers = [self.hiddenLayer, self.outputLayer]
         self.params = [self.h0] + map(lambda x: x.params, self.layers)
