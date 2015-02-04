@@ -15,13 +15,12 @@ relu = lambda x: T.switch(x<0, 0, x)
 cappedrelu =  lambda x: T.minimum(T.switch(x<0, 0, x), 6)
 sigmoid = T.nnet.sigmoid
 tanh = T.tanh
-softmax = T.nnet.softmax
+# softmax = T.nnet.softmax
 
-# # you need the bleeding edge Theano to get 'keep_dims'
-# def softmax(x):
-#     e_x = T.exp(x - x.max(axis=1, keep_dims=True)) 
-#     out = e_x / e_x.sum(axis=1, keep_dims=True)
-#     return out
+def softmax(x):
+    e_x = T.exp(x - x.max(axis=1, keepdims=True)) 
+    out = e_x / e_x.sum(axis=1, keepdims=True)
+    return out
 
 activations = {
     'relu': relu,
