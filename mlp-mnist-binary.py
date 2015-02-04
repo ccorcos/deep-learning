@@ -16,18 +16,25 @@ import time
 
 warnings.simplefilter("ignore")
 
-print "An MLP on MNIST with dropout."
+print "An MLP on MNIST."
 print "loading MNIST"
 f = open('mnist.pkl', 'rb')
 mnist = pickle.load(f)
 f.close()
+
+convert2onehot = lambda y: map(lambda x: onehot(x, 10), y)
+
+mnist = list(mnist)
+for i in range(3):
+    mnist[i] = list(mnist[i])
+    mnist[i][1] = numpy.array(convert2onehot(mnist[i][1]))
 
 print "loading data to the GPU"
 dataset = load_data(mnist)
 
 print "creating the MLP"
 x = T.matrix('x')  # input
-t = T.ivector('t')  # targets
+t = T.imatrix('t')  # targets
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 
 # construct the MLP class
@@ -35,9 +42,9 @@ mlp = MLP(
     rng=rng,
     input=x,
     n_in=28 * 28,
-    dropout_rate=0.5,
-    n_hidden=1000,
-    n_out=10
+    n_hidden=500,
+    n_out=10,
+    outputActivation='sigmoid'
 )
 
 # regularization
@@ -56,6 +63,16 @@ params = list(flatten(mlp.params))
 
 print "training the MLP with sgdem"
 
+# sgd(dataset=dataset,
+#     inputs=x,
+#     targets=t,
+#     cost=cost,
+#     params=params,
+#     errors=errors,
+#     learning_rate=0.01, 
+#     n_epochs=1000,
+#     batch_size=20)
+
 sgdem(dataset=dataset,
     inputs=x,
     targets=t,
@@ -64,24 +81,15 @@ sgdem(dataset=dataset,
     errors=errors,
     learning_rate=0.01,
     momentum=0.2,
-    n_epochs=100,
+    n_epochs=1000,
     batch_size=20,
     patience=10000,
-    patience_increase=1.25,
+    patience_increase=1.5,
     improvement_threshold=0.995)
 
 print "compiling the prediction function"
-
 predict = theano.function(inputs=[x], outputs=mlp.pred)
-distribution = theano.function(inputs=[x], outputs=mlp.output)
 
 print "predicting the first 10 samples of the test dataset"
-print "predict:", predict(mnist[2][0][0:10])
-print "answer: ", mnist[2][1][0:10]
-
-print "the output distribution should be slightly different each time due to dropout"
-print "distribution:", distribution(mnist[2][0][0:1])
-print "distribution:", distribution(mnist[2][0][0:1])
-print "distribution:", distribution(mnist[2][0][0:1])
-print "distribution:", distribution(mnist[2][0][0:1])
-print "distribution:", distribution(mnist[2][0][0:1])
+print "predict:", numpy.argmax(predict(mnist[2][0][0:10]), axis=1)
+print "answer: ", numpy.argmax(mnist[2][1][0:10], axis=1)

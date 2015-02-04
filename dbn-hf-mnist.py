@@ -47,7 +47,7 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    dbn.negative_log_likelihood(t)
+    dbn.loss(t)
     + L1_reg * dbn.L1
     + L2_reg * dbn.L2_sqr
 )
