@@ -944,7 +944,7 @@ class USE(object):
             self.loss = self.nll_binary
             self.errors = self.predictionErrors
             self.pred = T.round(self.output)  # round to {0,1}
-            self.obs_pred = self.obs[:,1:,:]
+            self.obs_pred = T.cast(self.obs[:,1:,:], 'int32')
         elif outputActivation == 'softmax':
             # This is a pain in the ass!
             self.loss = self.nll_multiclass

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 warnings.simplefilter("ignore")
 
-print "Testing the deep USE with dropout, relus, and softmax outputs"
+print "Testing the USE with softmax outputs"
 print "Generating 1D map test data..."
 
 # inputs are left or right actions.
@@ -77,14 +77,9 @@ use = USE(
     act=a,
     n_obs=n_obs,
     n_act=n_act,
-    n_hidden=100,
-    ff_obs=[50], 
-    ff_filt=[50], 
-    ff_trans=[50], 
-    ff_act=[50], 
-    ff_pred=[50],
-    # dropout_rate=0.5,
-    # activation='relu'
+    n_hidden=50,
+    activation='relu',
+    outputActivation="sigmoid"
 )
 
 # regularization
