@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 warnings.simplefilter("ignore")
 
-print "Testing an RNN with linear outputs"
+print "Testing an RNN with softmax outputs"
 print "Generating lag test data..."
 
 n_hidden = 100

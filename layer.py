@@ -195,15 +195,16 @@ class HiddenLayer(object):
         self.b = b
 
         output_linear = T.dot(input, self.W) + self.b
-        self.output = (output_linear if activation is None else activations[activation](output_linear))
+        output = (output_linear if activation is None else activations[activation](output_linear))
        
         if dropout_rate > 0:
             srng = theano.tensor.shared_randomstreams.RandomStreams(rng.randint(999999))
             # p=1-p because 1's indicate keep and p is prob of dropping
-            mask = srng.binomial(n=1, p=1-dropout_rate, size=self.output.shape)
+            mask = srng.binomial(n=1, p=1-dropout_rate, size=output.shape)
             # The cast is important because int * float32 = float64 which pulls things off the gpu
-            self.output = self.output * T.cast(mask, theano.config.floatX)
+            output = output * T.cast(mask, theano.config.floatX)
 
+        self.output = output
         self.params = [self.W, self.b]
 
         self.L1 = abs(self.W).sum()
@@ -298,8 +299,8 @@ class ForwardFeed(object):
 
         self.params = map(lambda x: x.params, self.layers)
 
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
 class ForwardFeedColumn(object):
     """ForwardFeedColumn Class
@@ -390,8 +391,8 @@ class MLP(object):
 
         self.layers = [self.hiddenLayer, self.outputLayer]
         self.params = map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
         self.loss = self.layers[-1].loss
         self.errors = self.layers[-1].errors
@@ -444,8 +445,8 @@ class DBN(object):
 
         self.layers = [self.ff, self.outputLayer]
         self.params = map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
         self.loss = self.layers[-1].loss
         self.errors = self.layers[-1].errors
@@ -514,8 +515,8 @@ class DBNPC(object):
 
         self.layers = self.ffcs + [self.outputLayer]
         self.params = map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
         self.loss = self.layers[-1].loss
         self.errors = self.layers[-1].errors
@@ -657,8 +658,8 @@ class RNN(object):
 
         self.layers = [self.hiddenLayer, self.outputLayer]
         self.params = [self.h0] + map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
         if outputActivation == 'linear':
             self.loss = self.mse
@@ -724,11 +725,12 @@ class RNN(object):
 
 
 
-class SE(object):
-    """(Recurrent Neural Network) State Estimator Class
+class USE(object):
+    """ Unserpervised State Estimator Class
 
-    A SE is an RNN that has actions and observations. This is an unsupervised model that
-    learns to predict the next observation based on all previous actions and observations.
+    A USE is like an RNN but it is an unsupervised model with actions and observations,
+    with the goal of predicting the next observations given all previous actions and
+    observations.
 
     INPUTS:
     n_obs: number of observation inputs
@@ -765,7 +767,7 @@ class SE(object):
                                            y_t  
     """
 
-    def __init__(self, rng, obs, act, n_obs, n_act, n_hidden, dropout_rate=0, warmUp=0, ff_obs=[], ff_filt=[], ff_trans=[], ff_act=[], ff_pred=[], activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, obs, act, n_obs, n_act, n_hidden, dropout_rate=0, ff_obs=[], ff_filt=[], ff_trans=[], ff_act=[], ff_pred=[], activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the recurrent neural network state estimator
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -783,6 +785,9 @@ class SE(object):
         activation: string, nonlinearity to be applied in the hidden layer
         """
 
+        self.obs = obs
+        self.act = act
+
         # create the k0 prior
         k0 = None
         if params:
@@ -790,8 +795,8 @@ class SE(object):
         else:
             k0_values = numpy.asarray(
                 rng.uniform(
-                    low=-numpy.sqrt(6. / (n_in + n_out)),
-                    high=numpy.sqrt(6. / (n_in + n_out)),
+                    low=-numpy.sqrt(6. / (n_hidden + n_hidden)),
+                    high=numpy.sqrt(6. / (n_hidden + n_hidden)),
                     size=(n_hidden,)
                 ),
                 dtype=theano.config.floatX
@@ -813,7 +818,7 @@ class SE(object):
         self.observationFF = ForwardFeed(
             rng=rng,
             input=self.o_t,
-            layer_sizes=[n_in] + ff_obs,
+            layer_sizes=[n_obs] + ff_obs,
             params=maybe(lambda: params[1]),
             activation=activation
         )
@@ -829,7 +834,7 @@ class SE(object):
         self.hLayer = HiddenLayer(
             rng=rng,
             input= T.concatenate([self.filterFF.output, self.observationFF.output], axis=1),
-            n_in=([n_in] + ff_obs)[-1] + ([n_hidden] + ff_filt)[-1],
+            n_in=([n_obs] + ff_obs)[-1] + ([n_hidden] + ff_filt)[-1],
             dropout_rate=dropout_rate,
             n_out=n_hidden,
             activation=activation,
@@ -910,11 +915,14 @@ class SE(object):
 
 
         [h_t, k_t, y_t], _ = theano.scan(step,
-                            sequences=[act.dimshuffle(1,0,2), obs.dimshuffle(1,0,2)] # swap the first two dimensions to scan over n_timesteps
+                            sequences=[act.dimshuffle(1,0,2), obs.dimshuffle(1,0,2)], # swap the first two dimensions to scan over n_timesteps
                             outputs_info=[h0, None, None])
 
-        k_t = T.join([k0_t, k_t], axis=0)
-        h_t = T.join([h0, k_t], axis=0)
+        # k0_t is (n_examples, n_hidden)
+        # k_t is (n_steps, n_examples, n_hidden)
+
+        k_t = T.concatenate([k0_t[numpy.newaxis,:,:], k_t])
+        h_t = T.concatenate([h0[numpy.newaxis,:,:], k_t])
 
         # swap the dimensions back to (n_examples, n_timesteps, n_out)
         self.h_t = h_t.dimshuffle(1,0,2)
@@ -924,8 +932,8 @@ class SE(object):
 
         self.layers = [self.observationFF, self.filterFF, self.hLayer, self.transformFF, self.actionFF, self.kLayer, self.predictorFF, self.outputLayer]
         self.params = [self.k0] + map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers))
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers))
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
         if outputActivation == 'linear':
             self.loss = self.mse
@@ -936,23 +944,26 @@ class SE(object):
             self.loss = self.nll_binary
             self.errors = self.predictionErrors
             self.pred = T.round(self.output)  # round to {0,1}
+            self.obs_pred = self.obs[:,1:,:]
         elif outputActivation == 'softmax':
             # This is a pain in the ass!
             self.loss = self.nll_multiclass
             self.errors = self.predictionErrors
             self.pred = T.argmax(self.output, axis=-1)
+            self.obs_pred = T.argmax(self.obs, axis=-1)[:,1:]
+
         else:
             raise NotImplementedError
 
-    def mse(self, y):
-        # error between output and target
-        return T.mean((self.output - y) ** 2)
 
-    def nll_binary(self, y):
+    def mse(self):
+        return T.mean((self.output - self.obs[:, 1:, :]) ** 2)
+
+    def nll_binary(self):
         # negative log likelihood based on binary cross entropy error
-        return T.mean(T.nnet.binary_crossentropy(self.output, y))
+        return T.mean(T.nnet.binary_crossentropy(self.output, self.obs[:, 1:, :]))
 
-    def nll_multiclass(self, y):
+    def nll_multiclass(self):
         # negative log likelihood based on multiclass cross entropy error
         #
         # Theano's advanced indexing is limited
@@ -964,10 +975,10 @@ class SE(object):
         # advanced indexing
         p_y = self.output
         p_y_m = T.reshape(p_y, (p_y.shape[0] * p_y.shape[1], -1))
-        y_f = y.flatten(ndim=1)
+        y_f = self.obs_pred.flatten(ndim=1)
         return -T.mean(T.log(p_y_m)[T.arange(p_y_m.shape[0]), y_f])
 
-    def predictionErrors(self, y):
+    def predictionErrors(self):
         """Return a float representing the number of errors in the minibatch
         over the total number of examples of the minibatch ; zero one
         loss over the size of the minibatch
@@ -977,13 +988,13 @@ class SE(object):
                   correct label
         """
         # check if y has same dimension of y_pred
-        if y.ndim != self.pred.ndim:
+        if self.obs_pred.ndim != self.pred.ndim:
             raise TypeError('y should have the same shape as self.pred',
                 ('y', y.type, 'pred', self.pred.type))
         # check if y is of the correct datatype
-        if y.dtype.startswith('int'):
+        if self.obs_pred.dtype.startswith('int'):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
-            return T.mean(T.neq(self.pred, y))
+            return T.mean(T.neq(self.pred, self.obs_pred))
         else:
             raise NotImplementedError()

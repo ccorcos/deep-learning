@@ -60,3 +60,8 @@ def flatten(container):
             yield i
 
 fmt = lambda x: "{:12.8f}".format(x)
+
+def onehot(value, length):
+    v = [0]*length
+    v[value] = 1
+    return v
