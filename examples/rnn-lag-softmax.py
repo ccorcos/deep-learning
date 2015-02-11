@@ -4,17 +4,14 @@
 import theano
 import theano.tensor as T
 import numpy
-import operator
-from layer import *
-from utils import *
-
-from sgdem import *
-import cPickle as pickle
-import warnings
+from DL.models.RNN import RNN
+from DL.optimizers.sgd import sgd
+from DL.utils import *
 import time
-
 import matplotlib.pyplot as plt
 
+# hide warnings
+import warnings
 warnings.simplefilter("ignore")
 
 print "Testing an RNN with softmax outputs"
@@ -56,7 +53,7 @@ dataset = load_data(lagData, output="int32")
 print "creating the RNN"
 x = T.tensor3('x')  # input
 t = T.imatrix('t')  # targets
-
+inputs = [x,t]
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 
 rnn = RNN(rng=rng, 
@@ -80,13 +77,12 @@ cost = (
 )
 
 errors = rnn.errors(t)
-params = list(flatten(rnn.params))
+params = flatten(rnn.params)
 
 print "training the rnn with sgdem"
 
-sgdem(dataset=dataset,
-    inputs=x,
-    targets=t,
+sgd(dataset=dataset,
+    inputs=inputs,
     cost=cost,
     params=params,
     errors=errors,

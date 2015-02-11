@@ -14,6 +14,8 @@ class DBNC(object):
 
     A Column Deep Belief network has multiple parallel forward feed DBNs
     but pool together their hidden layers into columns at intermitten layers.
+
+    Very slow and inefficient honestly. Doesnt outperform a DBN either.
     """
 
     def __init__(self, rng, input, n_in, n_out, ff_sizes=[], n_parallel=1, dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):

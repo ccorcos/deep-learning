@@ -4,37 +4,35 @@
 import theano
 import theano.tensor as T
 import numpy
-import operator
-from layer import *
-from utils import *
-
-from sgdem import *
-import cPickle as pickle
-import warnings
+from DL.models.RNN import RNN
+from DL.optimizers.sgd import sgd
+from DL.utils import *
 import time
-
 import matplotlib.pyplot as plt
 
+# hide warnings
+import warnings
 warnings.simplefilter("ignore")
 
-print "Testing an RNN with linear outputs"
+print "Testing an RNN with binary outputs"
 print "Generating lag test data..."
+
 n_hidden = 30
 n_in = 5
-n_out = 3
+n_out = 2
 n_steps = 11
 n_seq = 100
 
-numpy.random.seed(0)
 # simple lag test
 seq = numpy.random.randn(n_seq, n_steps, n_in)
 targets = numpy.zeros((n_seq, n_steps, n_out))
 
-targets[:, 1:, 0] = seq[:, :-1, 3]  # delayed 1
-targets[:, 1:, 1] = seq[:, :-1, 2]  # delayed 1
-targets[:, 2:, 2] = seq[:, :-2, 0]  # delayed 2
+# whether lag 1 (dim 3) is greater than lag 2 (dim 0)
+targets[:, 2:, 0] = numpy.cast[numpy.int](seq[:, 1:-1, 3] > seq[:, :-2, 0])
 
-targets += 0.01 * numpy.random.standard_normal(targets.shape)
+# whether product of lag 1 (dim 4) and lag 1 (dim 2)
+# is less than lag 2 (dim 0)
+targets[:, 2:, 1] = numpy.cast[numpy.int]((seq[:, 1:-1, 4] * seq[:, 1:-1, 2]) > seq[:, :-2, 0])
 
 # split into training, validation, and test
 trainIdx = int(numpy.floor(4./6.*n_seq))
@@ -45,12 +43,13 @@ lagData = ((seq[0:trainIdx,:,:], targets[0:trainIdx,:,:]),
            (seq[validIdx:,:,:], targets[validIdx:,:,:]))
 
 print "loading data to the GPU"
-dataset = load_data(lagData, output="float32")
+# if you change this to int32, make you change the target tensor type!
+dataset = load_data(lagData, output="int32")
 
 print "creating the RNN"
 x = T.tensor3('x')  # input
-t = T.tensor3('t')  # targets
-
+t = T.itensor3('t')  # targets
+inputs = [x,t]
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 
 rnn = RNN(rng=rng, 
@@ -59,7 +58,7 @@ rnn = RNN(rng=rng,
           n_hidden=n_hidden, 
           n_out=n_out, 
           activation='tanh', 
-          outputActivation='linear'
+          outputActivation='sigmoid'
 )
 
 # regularization
@@ -74,13 +73,12 @@ cost = (
 )
 
 errors = rnn.errors(t)
-params = list(flatten(rnn.params))
+params = flatten(rnn.params)
 
 print "training the rnn with sgdem"
 
-sgdem(dataset=dataset,
-    inputs=x,
-    targets=t,
+sgd(dataset=dataset,
+    inputs=inputs,
     cost=cost,
     params=params,
     errors=errors,
@@ -96,20 +94,23 @@ print "compiling the prediction function"
 
 predict = theano.function(inputs=[x], outputs=rnn.output)
 
-print "predicting the first sample of the training dataset"
+print "predicting the first 10 samples of the training dataset"
 
-fig = plt.figure()
-ax1 = plt.subplot(211)
-plt.plot(seq[0])
-ax1.set_title('input')
+seqs = xrange(10)
+for seq_num in seqs:
+    fig = plt.figure()
+    ax1 = plt.subplot(211)
+    plt.plot(seq[seq_num])
+    ax1.set_title('input')
+    ax2 = plt.subplot(212)
+    true_targets = plt.step(xrange(n_steps), targets[seq_num], marker='o')
 
-ax2 = plt.subplot(212)
-true_targets = plt.plot(targets[0])
+    guess = predict(seq[seq_num:seq_num+1])[0]
+    guessed_targets = plt.step(xrange(n_steps), guess)
+    plt.setp(guessed_targets, linestyle='--', marker='d')
+    for i, x in enumerate(guessed_targets):
+        x.set_color(true_targets[i].get_color())
+    ax2.set_ylim((-0.1, 1.1))
+    ax2.set_title('solid: true output, dashed: model output (prob)')
 
-guess = predict(seq[0:1])[0]
-guessed_targets = plt.plot(guess, linestyle='--')
-for i, x in enumerate(guessed_targets):
-    x.set_color(true_targets[i].get_color())
-
-ax2.set_title('solid: true output, dashed: model output')
 plt.show()
