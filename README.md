@@ -7,3 +7,15 @@
 - embeddings
 - save and load models
 - dropout with RNNs
+
+
+
+## Getting Started
+  
+    cd DL
+    python setup.py develop
+
+To unlink this package when you are done with it
+
+    cd DL
+    python setup.py develop --uninstall

@@ -4,12 +4,10 @@
 import theano
 import theano.tensor as T
 import numpy
-import operator
 import time
 
-def sgdem(dataset=None,
+def sgd(dataset=None,
         inputs=None,
-        targets=None,
         cost=None,
         params=None,
         errors=None,
@@ -24,23 +22,32 @@ def sgdem(dataset=None,
     """
     stochastic gradient descent optimization with early stopping and momentum
 
+    for vanilla gradient decent, set the patience to numpy.inf and momentum to 0
+
     early stopping criteria
     patience: look as this many examples regardless
     patience_increase: wait this much longer when a new best is found
     improvement_threshold: a relative improvement of this much is considered significant
+
+    dataset is a list or tuple of length 3 including the training set, validation set
+    and the test set. In each set, these must be a list or tuple of the inputs to
+    the computational graph in the same order as the list of Theano.tensor variable
+    that are passed in as inputs. The inputs to the graph must accept minibatches meaning
+    that the first dimension is the number of training examples. 
+
     """
 
     # index to a [mini]batch
     index = T.lscalar()  
 
-    train_set_x, train_set_y = dataset[0]
-    valid_set_x, valid_set_y = dataset[1]
-    test_set_x, test_set_y = dataset[2]
+    train_set = dataset[0]
+    valid_set = dataset[1]
+    test_set = dataset[2]
 
     # compute number of minibatches for training, validation and testing
-    n_train_batches = train_set_x.get_value(borrow=True).shape[0] / batch_size
-    n_valid_batches = valid_set_x.get_value(borrow=True).shape[0] / batch_size
-    n_test_batches = test_set_x.get_value(borrow=True).shape[0] / batch_size
+    n_train_batches = train_set.get_value(borrow=True).shape[0] / batch_size
+    n_valid_batches = valid_set.get_value(borrow=True).shape[0] / batch_size
+    n_test_batches = test_set.get_value(borrow=True).shape[0] / batch_size
 
     if n_train_batches == 0:
         n_train_batches = 1
@@ -52,23 +59,25 @@ def sgdem(dataset=None,
     print "sgdem: compiling test function"
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
+    test_givens = {}
+    valid_givens = {}
+    train_givens = {}
+    for i in range(len(inputs)):
+        test_givens[inputs[i]]  =  test_set[i][index * batch_size:(index + 1) * batch_size]
+        valid_givens[inputs[i]] = valid_set[i][index * batch_size:(index + 1) * batch_size]
+        train_givens[inputs[i]] = train_set[i][index * batch_size:(index + 1) * batch_size]
+
     test_model = theano.function(
         inputs=[index],
         outputs=errors,
-        givens={
-            inputs: test_set_x[index * batch_size:(index + 1) * batch_size],
-            targets: test_set_y[index * batch_size:(index + 1) * batch_size]
-        }
+        givens=test_givens
     )
 
     print "sgdem: compiling validate function"
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
-        givens={
-            inputs: valid_set_x[index * batch_size:(index + 1) * batch_size],
-            targets: valid_set_y[index * batch_size:(index + 1) * batch_size]
-        }
+        givens=valid_givens
     )
 
     print "sgdem: computing gradients"
@@ -88,10 +97,7 @@ def sgdem(dataset=None,
         inputs=[index],
         outputs=cost,
         updates=updates,
-        givens={
-            inputs: train_set_x[index * batch_size: (index + 1) * batch_size],
-            targets: train_set_y[index * batch_size: (index + 1) * batch_size]
-        }
+        givens=train_givens
     )
 
     validation_frequency = min(n_train_batches, patience / 2)

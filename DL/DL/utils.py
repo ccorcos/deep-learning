@@ -65,3 +65,24 @@ def onehot(value, length):
     v = [0]*length
     v[value] = 1
     return v
+
+relu = lambda x: T.switch(x<0, 0, x)
+cappedrelu =  lambda x: T.minimum(T.switch(x<0, 0, x), 6)
+sigmoid = T.nnet.sigmoid
+tanh = T.tanh
+# softmax = T.nnet.softmax
+
+# a differentiable version for HF that doesn't have some optimizations.
+def softmax(x):
+    e_x = T.exp(x - x.max(axis=1, keepdims=True)) 
+    out = e_x / e_x.sum(axis=1, keepdims=True)
+    return out
+
+activations = {
+    'relu': relu,
+    'cappedrelu': cappedrelu,
+    'sigmoid': sigmoid,
+    'tanh': tanh,
+    'linear': lambda x: x,
+    'softmax': softmax
+}
