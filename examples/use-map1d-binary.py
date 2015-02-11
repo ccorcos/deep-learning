@@ -4,22 +4,17 @@
 import theano
 import theano.tensor as T
 import numpy
-import operator
-from layer import *
-from utils import *
-
-from sgdem import *
-import cPickle as pickle
-import warnings
+from DL.models.USE import USE
+from DL.optimizers.sgd import sgd
+from DL.utils import *
 import time
-
 from sparkprob import *
 
-import matplotlib.pyplot as plt
-
+# hide warnings
+import warnings
 warnings.simplefilter("ignore")
 
-print "Testing the USE with softmax outputs"
+print "Testing the USE with binary observation predictions."
 print "Generating 1D map test data..."
 
 # inputs are left or right actions.
@@ -68,7 +63,7 @@ dataset = load_data(data, output="float32")
 print "creating the USE"
 o = T.tensor3('o')  # observations
 a = T.tensor3('a')  # actions
-
+inputs = [o,a]
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 
 use = USE(
@@ -94,14 +89,12 @@ cost = (
 )
 
 errors = use.errors()
-params = list(flatten(use.params))
+params = flatten(use.params)
 
 print "training the USE with sgdem"
 
-
-sgdem(dataset=dataset,
-    inputs=o,          # it shouldnt matter
-    targets=a,         # it shouldnt matter
+sgd(dataset=dataset,
+    inputs=inputs,
     cost=cost,
     params=params,
     errors=errors,
