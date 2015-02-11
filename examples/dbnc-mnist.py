@@ -53,6 +53,7 @@ errors = dbn.errors(t)
 params = flatten(dbn.params)
 
 print "training the dbn with sgdem"
+print "WARNING: this takes an unreasonable amount of time to compile..."
 
 sgd(dataset=dataset,
     inputs=inputs,
