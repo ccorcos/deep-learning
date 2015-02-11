@@ -1,8 +1,9 @@
 # Some Deep Learning models built with Theano
 
-hessian free optimization
-save and load models
-
-
-use the column model on MNIST
-SERNN Class - State Estimation Recurrent Neural Network
+## To Do
+- refactor layer.py into different files
+- rewrite optimizations with sgdem2
+- LSTM
+- embeddings
+- save and load models
+- dropout with RNNs
