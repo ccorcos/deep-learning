@@ -6,10 +6,6 @@ import theano.tensor as T
 import numpy
 from ..utils import *
 
-# hide warnings
-import warnings
-warnings.simplefilter("ignore")
-
 class HiddenLayer(object):
     def __init__(self, rng, input, n_in, n_out, dropout_rate=0, params=None, activation='tanh'):
         """

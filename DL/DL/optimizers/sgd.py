@@ -45,9 +45,9 @@ def sgd(dataset=None,
     test_set = dataset[2]
 
     # compute number of minibatches for training, validation and testing
-    n_train_batches = train_set.get_value(borrow=True).shape[0] / batch_size
-    n_valid_batches = valid_set.get_value(borrow=True).shape[0] / batch_size
-    n_test_batches = test_set.get_value(borrow=True).shape[0] / batch_size
+    n_train_batches = train_set[0].get_value(borrow=True).shape[0] / batch_size
+    n_valid_batches = valid_set[0].get_value(borrow=True).shape[0] / batch_size
+    n_test_batches = test_set[0].get_value(borrow=True).shape[0] / batch_size
 
     if n_train_batches == 0:
         n_train_batches = 1

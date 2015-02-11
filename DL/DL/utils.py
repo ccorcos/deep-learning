@@ -51,13 +51,15 @@ def maybe(func):
         pass
     return res
 
-def flatten(container):
+def flattenIterator(container):
     for i in container:
         if isinstance(i, list) or isinstance(i, tuple):
             for j in flatten(i):
                 yield j
         else:
             yield i
+
+flatten = lambda x: list(flattenIterator(x))
 
 fmt = lambda x: "{:12.8f}".format(x)
 
