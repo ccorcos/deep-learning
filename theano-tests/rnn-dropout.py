@@ -29,7 +29,6 @@ b = theano.shared(value=b_values, name='b', borrow=True)
 output = T.tanh(T.dot(input, W) + b)
 
 updates = {}
-
 if dropout_rate > 0:
     # p=1-p because 1's indicate keep and p is prob of dropping
     srng = theano.tensor.shared_randomstreams.RandomStreams(int(time.time()))
@@ -40,15 +39,16 @@ if dropout_rate > 0:
     updates = srng.updates()
 
 
-x0 = T.matrix('x0')
 x = T.tensor3('x')
 
 def step(x_t, x_tm1):
-    replace = [(input,x_t)]
+    replace = [(input, x_t)]
     replace += updates
     x_tp1 = theano.clone(output, replace=replace)
     return x_tp1 + x_tm1
 
-z, _ = theano.scan(step, sequences=[x], outputs_info=[x0])
+z, _ = theano.scan(step, sequences=[x[1:]], outputs_info=[x[0]])
 
 print z
+
+predit = theano.function(inputs=[x], outputs=z)

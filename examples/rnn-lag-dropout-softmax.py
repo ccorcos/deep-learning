@@ -93,7 +93,8 @@ sgd(dataset=dataset,
     batch_size=100,
     patience=1000,
     patience_increase=2.,
-    improvement_threshold=0.9995)
+    improvement_threshold=0.9995,
+    updates=rnn.updates)
 
 print "compiling the prediction function"
 

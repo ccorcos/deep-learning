@@ -17,7 +17,8 @@ def sgd(dataset=None,
         batch_size=20,
         patience=10000,
         patience_increase=2,
-        improvement_threshold=0.995):
+        improvement_threshold=0.995,
+        updates=[]):
 
     """
     stochastic gradient descent optimization with early stopping and momentum
@@ -59,13 +60,13 @@ def sgd(dataset=None,
     print "sgdem: compiling test function"
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
-    test_givens = {}
-    valid_givens = {}
-    train_givens = {}
+    test_givens = list(updates)
+    valid_givens = list(updates)
+    train_givens = list(updates)
     for i in range(len(inputs)):
-        test_givens[inputs[i]]  =  test_set[i][index * batch_size:(index + 1) * batch_size]
-        valid_givens[inputs[i]] = valid_set[i][index * batch_size:(index + 1) * batch_size]
-        train_givens[inputs[i]] = train_set[i][index * batch_size:(index + 1) * batch_size]
+        test_givens.append((inputs[i], test_set[i][index * batch_size:(index + 1) * batch_size]))
+        valid_givens.append((inputs[i], valid_set[i][index * batch_size:(index + 1) * batch_size]))
+        train_givens.append((inputs[i], train_set[i][index * batch_size:(index + 1) * batch_size]))
 
     test_model = theano.function(
         inputs=[index],
