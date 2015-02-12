@@ -44,9 +44,8 @@ x0 = T.matrix('x0')
 x = T.tensor3('x')
 
 def step(x_t, x_tm1):
-    replace = {input:x_t}
-    for update in updates:
-        replace[update[0]] = update[1]
+    replace = [(input,x_t)]
+    replace += updates
     x_tp1 = theano.clone(output, replace=replace)
     return x_tp1 + x_tm1
 

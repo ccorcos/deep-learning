@@ -12,7 +12,7 @@ from HiddenLayer import HiddenLayer
 class Recurrence(object):
     """A Reccurence Class which wraps an architecture into a recurrent one."""
 
-    def __init__(self, input, input_t, output_t, recurrent_t, recurrent_tm1, recurrent_0):
+    def __init__(self, input, input_t, output_t, recurrent_t, recurrent_tm1, recurrent_0, updates=[]):
         """Initialize the recurrence class with the input, output, the recurrent variable
         and the initial recurrent variable.
 
@@ -23,19 +23,14 @@ class Recurrence(object):
 
         # compute the recurrence
         def step(x_t, h_tm1):
-            h_t = theano.clone(recurrent_t, replace={
-                input_t: x_t, 
-                recurrent_tm1: h_tm1
-            })       
-            y_t = theano.clone(output_t, replace={
-                recurrent_t: h_t
-            })
+            h_t = theano.clone(recurrent_t, replace=updates + [(input_t, x_t), (recurrent_tm1, h_tm1)])       
+            y_t = theano.clone(output_t, replace=updates + [(recurrent_t, h_t)])
             return h_t, y_t
 
         h0_t = T.extra_ops.repeat(recurrent_0[numpy.newaxis, :], input.shape[0], axis=0)
 
         [h, y], _ = theano.scan(step,
-                            sequences=input.dimshuffle(1,0,2), # swap the first two dimensions to scan over n_timesteps
+                            sequences=[input.dimshuffle(1,0,2),], # swap the first two dimensions to scan over n_timesteps
                             outputs_info=[h0_t, None])
 
         # swap the dimensions back to (n_examples, n_timesteps, n_out)
@@ -127,6 +122,11 @@ class RNN(object):
 
         y_t = self.outputLayer.output
 
+        self.layers = [self.hiddenLayer, self.outputLayer]
+        self.params = [self.h0] + map(lambda x: x.params, self.layers)
+        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
+        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
+        self.updates = reduce(operator.add, map(lambda x: x.updates, self.layers), [])
 
         R = Recurrence(
             input=input, 
@@ -135,15 +135,11 @@ class RNN(object):
             recurrent_t=h_t, 
             recurrent_tm1=h_tm1, 
             recurrent_0=self.h0,
+            updates=self.updates
         )
 
         self.output = R.output
         self.h = R.recurrent
-
-        self.layers = [self.hiddenLayer, self.outputLayer]
-        self.params = [self.h0] + map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
 
         if outputActivation == 'linear':
             self.loss = self.mse

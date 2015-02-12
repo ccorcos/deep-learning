@@ -43,12 +43,12 @@ def load_data(dataset, output="int32"):
             (test_set_x, test_set_y)]
     return rval
 
-def maybe(func):
+def maybe(func, otherwise=None):
     res = None
     try:
         res = func()
     except:
-        pass
+        return otherwise
     return res
 
 def flattenIterator(container):

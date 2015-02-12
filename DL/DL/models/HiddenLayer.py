@@ -59,12 +59,14 @@ class HiddenLayer(object):
         output_linear = T.dot(input, self.W) + self.b
         output = (output_linear if activation is None else activations[activation](output_linear))
        
+        self.updates = []
         if dropout_rate > 0:
             srng = theano.tensor.shared_randomstreams.RandomStreams(rng.randint(999999))
             # p=1-p because 1's indicate keep and p is prob of dropping
             mask = srng.binomial(n=1, p=1-dropout_rate, size=output.shape)
             # The cast is important because int * float32 = float64 which pulls things off the gpu
             output = output * T.cast(mask, theano.config.floatX)
+            self.updates += srng.updates()
 
         self.output = output
         self.params = [self.W, self.b]

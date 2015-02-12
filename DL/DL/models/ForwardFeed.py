@@ -47,3 +47,4 @@ class ForwardFeed(object):
 
         self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
         self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
+        self.updates = reduce(operator.add, map(lambda x: x.updates, self.layers), [])
