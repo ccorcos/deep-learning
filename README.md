@@ -2,9 +2,10 @@
 
 ## To Do
 - rnn with dropout
-- use with dropout
 - LSTM
 - embeddings
+- use with dropout
+- deep rnn
 - save and load models
 
 
