@@ -7,7 +7,6 @@ import numpy
 from DL.models.MLP import MLP
 from DL.optimizers.sgd import sgd
 from DL.utils import *
-import cPickle as pickle
 import time
 
 # hide warnings
@@ -17,9 +16,7 @@ warnings.simplefilter("ignore")
 
 print "An MLP with dropout on MNIST."
 print "loading MNIST"
-f = open('../datasets/mnist.pkl', 'rb')
-mnist = pickle.load(f)
-f.close()
+mnist = datasets.mnist()
 
 print "loading data to the GPU"
 dataset = load_data(mnist)

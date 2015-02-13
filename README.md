@@ -25,6 +25,13 @@ To unlink this package when you are done:
     cd DL
     python setup.py develop --uninstall
 
+To load the datasets
+
+    cd datasets
+    curl -O http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz
+    curl -O http://www.iro.umontreal.ca/~lisa/deep/data/imdb.pkl
+
+
 ### Models
 
 The general idea works like this. A "model" take symbolic tensors representing a minibatch. The model constructs the computational graph and produces some class variables to hook into: params, L1, L2_sqr, loss, errors, output, pred. Thus, we can compose models and propagate the L1 and L2_sqr for regularization. We can save the params and pass them as inputs to load a model. We can use the loss and the errors to pass into an optimization function. And we can create a prediction function using output or pred.
