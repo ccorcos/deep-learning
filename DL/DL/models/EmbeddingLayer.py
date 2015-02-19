@@ -14,7 +14,7 @@ class EmbeddingLayer(HiddenLayer):
     functionality in this class for visualization layer
     """
 
-    def __init__(self, rng, input, n_in, n_out, dropout_rate=0, params=None):
+    def __init__(self, rng, input, n_in, n_out, params=None):
         """ Initialize the parameters of the embedding layer
 
         input: theano.tensor, matrix of size (n_examples, n_in)
@@ -22,4 +22,4 @@ class EmbeddingLayer(HiddenLayer):
         n_out: int, number of output units
 
         """
-        HiddenLayer.__init__(self, rng, input, n_in, n_out, dropout_rate=dropout_rate, params=params, activation='linear')
+        HiddenLayer.__init__(self, rng, input, n_in, n_out, dropout_rate=0, params=params, activation='linear')
