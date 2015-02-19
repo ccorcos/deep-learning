@@ -1,12 +1,11 @@
 # Some Deep Learning models built with Theano
 
 ## To Do
-- rnn with dropout
-- LSTM
-- embeddings
-- use with dropout
-- deep rnn
-- save and load models
+
+LSTM. Dropout RNN. Embedding layer class.
+USE with dropout, learn embedding layer for one die. do it again for the same die with a different initialization. Do it for a different die. compare the embedding matrices. How do we do this in real time?
+Try this on a 2d SLAM dataset.
+  - embedding visualization http://lvdmaaten.github.io/tsne/
 
 
 ## Getting Started
