@@ -50,7 +50,7 @@ class SSE(object):
                           y_t  
     """
 
-    def __init__(self, rng, obs, act, n_obs, n_act, n_hidden, dropout_rate=0, ff_obs=[], ff_filt=[], ff_trans=[], ff_act=[], ff_pred=[], activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, obs, act, n_obs, n_act, n_pred, n_hidden, dropout_rate=0, ff_obs=[], ff_filt=[], ff_trans=[], ff_act=[], ff_pred=[], activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the recurrent neural network state estimator
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -217,24 +217,23 @@ class SSE(object):
         self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
         self.updates = reduce(operator.add, map(lambda x: x.updates, self.layers), [])
 
-        if activation == 'linear':
+        if outputActivation == 'linear':
             self.loss = self.mse
             self.errors = self.mse
             self.pred = self.output
-        elif activation == 'sigmoid':
+        elif outputActivation == 'sigmoid':
             # I was having trouble here with ints and floats. Good question what exactly was going on.
             # I decided to settle with floats and use MSE. Seems to work after all...
             self.loss = self.nll_binary
             self.errors = self.predictionErrors
             self.pred = T.round(self.output)  # round to {0,1}
-        elif activation == 'softmax':
+        elif outputActivation == 'softmax':
             # This is a pain in the ass!
             self.loss = self.nll_multiclass
             self.errors = self.predictionErrors
             self.pred = T.argmax(self.output, axis=-1)
         else:
-            pass
-            # raise NotImplementedError
+            raise NotImplementedError
 
 
     def mse(self, y):
