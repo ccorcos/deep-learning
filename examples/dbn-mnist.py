@@ -6,8 +6,8 @@ import theano.tensor as T
 import numpy
 from DL.models.DBN import DBN
 from DL.optimizers.sgd import sgd
+from DL import datasets
 from DL.utils import *
-import cPickle as pickle
 import warnings
 import time
 
@@ -15,9 +15,7 @@ warnings.simplefilter("ignore")
 
 print "An DBN on MNIST with dropout."
 print "loading MNIST"
-f = open('../datasets/mnist.pkl', 'rb')
-mnist = pickle.load(f)
-f.close()
+mnist = datasets.mnist()
 
 print "loading data to the GPU"
 dataset = load_data(mnist)

@@ -1,55 +1,31 @@
-# Some Deep Learning models built with Theano
 
-## To Do
+def sgd(lr, tparams, grads, x, mask, y, cost):
+    """ Stochastic Gradient Descent
 
-LSTM. Dropout RNN. Embedding layer class.
-  - lstm branch: http://deeplearning.net/tutorial/lstm.html
-USE with dropout, learn embedding layer for one die. do it again for the same die with a different initialization. Do it for a different die. compare the embedding matrices. How do we do this in real time?
-Try this on a 2d SLAM dataset.
-  - embedding visualization http://lvdmaaten.github.io/tsne/
+    :note: A more complicated version of sgd then needed.  This is
+        done like that for adadelta and rmsprop.
 
+    """
+    # New set of shared variable that will contain the gradient
+    # for a mini-batch.
+    gshared = [theano.shared(p.get_value() * 0., name='%s_grad' % k)
+               for k, p in tparams.iteritems()]
+    gsup = [(gs, g) for gs, g in zip(gshared, grads)]
 
-## Getting Started
+    # Function that computes gradients for a mini-batch, but do not
+    # updates the weights.
+    f_grad_shared = theano.function([x, mask, y], cost, updates=gsup,
+                                    name='sgd_f_grad_shared')
 
-Some examples use `sparkprob` to visualize probablity distributions at the commandline so you may need to install it
+    pup = [(p, p - lr * g) for p, g in zip(tparams.values(), gshared)]
 
-    pip install sparkprob
+    # Function that updates the weights from the previously computed
+    # gradient.
+    f_update = theano.function([lr], [], updates=pup,
+                               name='sgd_f_update')
 
-All of the examples use the `DL` package. To use it:
-  
-    cd DL
-    python setup.py develop
+    return f_grad_shared, f_update
 
-To unlink this package when you are done:
-
-    cd DL
-    python setup.py develop --uninstall
-
-To load the datasets
-
-    cd datasets
-    curl -O http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz
-    curl -O http://www.iro.umontreal.ca/~lisa/deep/data/imdb.pkl
-
-
-### Models
-
-The general idea works like this. A "model" take symbolic tensors representing a minibatch. The model constructs the computational graph and produces some class variables to hook into: params, L1, L2_sqr, loss, errors, output, pred. Thus, we can compose models and propagate the L1 and L2_sqr for regularization. We can save the params and pass them as inputs to load a model. We can use the loss and the errors to pass into an optimization function. And we can create a prediction function using output or pred.
-
-Some subtleties here about the naming. Loss is typically something like cross-entropy-error, negative-log-likelihood, or mean-square-error. Errors would be something like, did the model predict the correct MNIST number? Similarly, the output of model could be a distribution of MNIST number likelihoods, but pred, the prediction, is the number with the maximum likelihood.
-
-### Optimizers
-
-An "optimizer" takes in a dataset which is a list of 3 elements: training dataset, validation dataset, test dataset. Each these sub-datasets is an array of data for each of the inputs to the computational graph of the model. Note that the inputs to the "computational graph of the model" includes the "outputs of the model" so-to-speak. The order of the data must correspond to the order of the tensors list passed into inputs. Optimizers are also given param's to update with respect to a cost function. The errors are used for test and validation.
-
-
-
-
-
-
-# ToDo
-
-```python
 
 def adadelta(lr, tparams, grads, x, mask, y, cost):
     zipped_grads = [theano.shared(p.get_value() * numpy_floatX(0.),
@@ -117,4 +93,3 @@ def rmsprop(lr, tparams, grads, x, mask, y, cost):
                                name='rmsprop_f_update')
 
     return f_grad_shared, f_update
-```
