@@ -6,6 +6,7 @@ import theano.tensor as T
 import numpy
 from DL.models.DBNC import DBNC
 from DL.optimizers.sgd import sgd
+from DL import datasets
 from DL.utils import *
 import warnings
 import time

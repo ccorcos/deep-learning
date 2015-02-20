@@ -6,6 +6,7 @@ import theano.tensor as T
 import numpy
 from DL.models.MLP import MLP
 from DL.optimizers.sgd import sgd
+from DL import datasets
 from DL.utils import *
 import time
 

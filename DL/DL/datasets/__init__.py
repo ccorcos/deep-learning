@@ -5,8 +5,8 @@ import os
 import urllib
 import gzip
 
-datasetPath = __file__[0:-11]
-
+datasetPath = '/'.join((__file__.split('/')[:-1]+['']))
+ 
 def getDataset(name, url):
     name = datasetPath + name
     if not os.path.isfile(name):
