@@ -3,6 +3,7 @@
 ## To Do
 
 LSTM. Dropout RNN. Embedding layer class.
+  - lstm branch: http://deeplearning.net/tutorial/lstm.html
 USE with dropout, learn embedding layer for one die. do it again for the same die with a different initialization. Do it for a different die. compare the embedding matrices. How do we do this in real time?
 Try this on a 2d SLAM dataset.
   - embedding visualization http://lvdmaaten.github.io/tsne/
@@ -33,3 +34,80 @@ Some subtleties here about the naming. Loss is typically something like cross-en
 ### Optimizers
 
 An "optimizer" takes in a dataset which is a list of 3 elements: training dataset, validation dataset, test dataset. Each these sub-datasets is an array of data for each of the inputs to the computational graph of the model. Note that the inputs to the "computational graph of the model" includes the "outputs of the model" so-to-speak. The order of the data must correspond to the order of the tensors list passed into inputs. Optimizers are also given param's to update with respect to a cost function. The errors are used for test and validation.
+
+
+
+
+
+
+# ToDo
+
+```python
+
+def adadelta(lr, tparams, grads, x, mask, y, cost):
+    zipped_grads = [theano.shared(p.get_value() * numpy_floatX(0.),
+                                  name='%s_grad' % k)
+                    for k, p in tparams.iteritems()]
+    running_up2 = [theano.shared(p.get_value() * numpy_floatX(0.),
+                                 name='%s_rup2' % k)
+                   for k, p in tparams.iteritems()]
+    running_grads2 = [theano.shared(p.get_value() * numpy_floatX(0.),
+                                    name='%s_rgrad2' % k)
+                      for k, p in tparams.iteritems()]
+
+    zgup = [(zg, g) for zg, g in zip(zipped_grads, grads)]
+    rg2up = [(rg2, 0.95 * rg2 + 0.05 * (g ** 2))
+             for rg2, g in zip(running_grads2, grads)]
+
+    f_grad_shared = theano.function([x, mask, y], cost, updates=zgup + rg2up,
+                                    name='adadelta_f_grad_shared')
+
+    updir = [-tensor.sqrt(ru2 + 1e-6) / tensor.sqrt(rg2 + 1e-6) * zg
+             for zg, ru2, rg2 in zip(zipped_grads,
+                                     running_up2,
+                                     running_grads2)]
+    ru2up = [(ru2, 0.95 * ru2 + 0.05 * (ud ** 2))
+             for ru2, ud in zip(running_up2, updir)]
+    param_up = [(p, p + ud) for p, ud in zip(tparams.values(), updir)]
+
+    f_update = theano.function([lr], [], updates=ru2up + param_up,
+                               on_unused_input='ignore',
+                               name='adadelta_f_update')
+
+    return f_grad_shared, f_update
+
+
+def rmsprop(lr, tparams, grads, x, mask, y, cost):
+    zipped_grads = [theano.shared(p.get_value() * numpy_floatX(0.),
+                                  name='%s_grad' % k)
+                    for k, p in tparams.iteritems()]
+    running_grads = [theano.shared(p.get_value() * numpy_floatX(0.),
+                                   name='%s_rgrad' % k)
+                     for k, p in tparams.iteritems()]
+    running_grads2 = [theano.shared(p.get_value() * numpy_floatX(0.),
+                                    name='%s_rgrad2' % k)
+                      for k, p in tparams.iteritems()]
+
+    zgup = [(zg, g) for zg, g in zip(zipped_grads, grads)]
+    rgup = [(rg, 0.95 * rg + 0.05 * g) for rg, g in zip(running_grads, grads)]
+    rg2up = [(rg2, 0.95 * rg2 + 0.05 * (g ** 2))
+             for rg2, g in zip(running_grads2, grads)]
+
+    f_grad_shared = theano.function([x, mask, y], cost,
+                                    updates=zgup + rgup + rg2up,
+                                    name='rmsprop_f_grad_shared')
+
+    updir = [theano.shared(p.get_value() * numpy_floatX(0.),
+                           name='%s_updir' % k)
+             for k, p in tparams.iteritems()]
+    updir_new = [(ud, 0.9 * ud - 1e-4 * zg / tensor.sqrt(rg2 - rg ** 2 + 1e-4))
+                 for ud, zg, rg, rg2 in zip(updir, zipped_grads, running_grads,
+                                            running_grads2)]
+    param_up = [(p, p + udn[1])
+                for p, udn in zip(tparams.values(), updir_new)]
+    f_update = theano.function([lr], [], updates=updir_new + param_up,
+                               on_unused_input='ignore',
+                               name='rmsprop_f_update')
+
+    return f_grad_shared, f_update
+```

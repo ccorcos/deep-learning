@@ -10,17 +10,15 @@ from ForwardFeed import ForwardFeed
 from HiddenLayer import HiddenLayer
 
 
-class USE(object):
-    """ Unserpervised State Estimator Class
-
-    A USE is like an RNN but it is an unsupervised model with actions and observations,
-    with the goal of predicting the next observations given all previous actions and
-    observations.
+class SSE(object):
+    """ Supervised State Estimator Class
 
     INPUTS:
     n_obs: number of observation inputs
     n_act: number of action inputs
+    n_pred: number of outputs
     n_hidden: number of hidden state nodes
+
     ff_obs: an array of layer sizes for the deep input
     ff_filt: an array of layer sizes for the deep transition
     ff_trans: an array of layer sizes for the deep transition
@@ -43,13 +41,13 @@ class USE(object):
                            |                |
                 filter     ▼   transform    ▼
      k_{t-1} ----------▶  h_t ----------▶  k_t ----------▶  h_{t+1}
-                                            |
-                                        |
-                                  predictor |
-                                            |
-                                            |
-                                            ▼
-                                           y_t  
+                           |
+                           |
+                 predictor |
+                           |
+                           |
+                           ▼
+                          y_t  
     """
 
     def __init__(self, rng, obs, act, n_obs, n_act, n_hidden, dropout_rate=0, ff_obs=[], ff_filt=[], ff_trans=[], ff_act=[], ff_pred=[], activation='tanh', outputActivation='softmax', params=None):
@@ -126,12 +124,31 @@ class USE(object):
             params=maybe(lambda: params[3])
         )
 
+        self.predictorFF = ForwardFeed(
+            rng=rng,
+            input=self.hLayer.output,
+            layer_sizes=[n_hidden] + ff_pred,
+            params=maybe(lambda: params[7]),
+            activation=activation
+        )
+
+        self.outputLayer = HiddenLayer(
+            rng=rng,
+            input=self.predictorFF.output,
+            n_in=([n_hidden] + ff_pred)[-1],
+            n_out=n_pred,
+            activation=outputActivation,
+            params=maybe(lambda: params[8])
+        )
+
         self.h_t = self.hLayer.output
+        self.y_t = self.outputLayer.output
 
         def obsStep(o_t, k_tm1):
             replaces = {self.o_t: o_t, self.k_tm1: k_tm1}
             h_t = theano.clone(self.h_t, replace=replaces)
-            return h_t
+            y_t = theano.clone(self.y_t, replace=replaces)
+            return h_t, y_t
 
         self.transformFF = ForwardFeed(
             rng=rng,
@@ -161,43 +178,21 @@ class USE(object):
 
         self.k_t = self.kLayer.output
 
-
-        self.predictorFF = ForwardFeed(
-            rng=rng,
-            input=self.kLayer.output,
-            layer_sizes=[n_hidden] + ff_pred,
-            params=maybe(lambda: params[7]),
-            activation=activation
-        )
-
-        self.outputLayer = HiddenLayer(
-            rng=rng,
-            input=self.predictorFF.output,
-            n_in=([n_hidden] + ff_pred)[-1],
-            n_out=n_obs,
-            activation=outputActivation,
-            params=maybe(lambda: params[8])
-        )
-
-        self.y_t = self.outputLayer.output
-        
         def actStep(a_t, h_t):
             replaces = {self.a_t: a_t, self.h_t: h_t}
             k_t = theano.clone(self.k_t, replace=replaces)
-            y_t = theano.clone(self.y_t, replace=replaces)
-            return k_t, y_t
+            return k_t
 
         # the first timestep all have the same k0
         k0_t = T.extra_ops.repeat(self.k0[numpy.newaxis, :], obs.shape[0], axis=0)
         # compute the first 
-        h0 = obsStep(obs[:,0,:], k0_t)
+        h0, y0 = obsStep(obs[:,0,:], k0_t)
 
         # compute the recurrence
-        def step(a_t, o_t, h_t):
-            k_t, y_t = actStep(a_t, h_t)
-            h_tp1 = obsStep(o_t, k_t)
-            return h_tp1, k_t, y_t
-
+        def step(a_t, o_t, h_tm1):
+            k_t = actStep(a_t, h_tm1)
+            h_t, y_t = obsStep(o_t, k_t)
+            return h_t, k_t, y_t
 
         [h_t, k_t, y_t], _ = theano.scan(step,
                             sequences=[act.dimshuffle(1,0,2), obs.dimshuffle(1,0,2)], # swap the first two dimensions to scan over n_timesteps
@@ -208,6 +203,7 @@ class USE(object):
 
         k_t = T.concatenate([k0_t[numpy.newaxis,:,:], k_t])
         h_t = T.concatenate([h0[numpy.newaxis,:,:], k_t])
+        y_t = T.concatenate([y0[numpy.newaxis,:,:], y_t])
 
         # swap the dimensions back to (n_examples, n_timesteps, n_out)
         self.h_t = h_t.dimshuffle(1,0,2)
@@ -221,35 +217,35 @@ class USE(object):
         self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
         self.updates = reduce(operator.add, map(lambda x: x.updates, self.layers), [])
 
-        if outputActivation == 'linear':
+        if activation == 'linear':
             self.loss = self.mse
             self.errors = self.mse
-        elif outputActivation == 'sigmoid':
+            self.pred = self.output
+        elif activation == 'sigmoid':
             # I was having trouble here with ints and floats. Good question what exactly was going on.
             # I decided to settle with floats and use MSE. Seems to work after all...
             self.loss = self.nll_binary
             self.errors = self.predictionErrors
             self.pred = T.round(self.output)  # round to {0,1}
-            self.obs_pred = T.cast(self.obs[:,1:,:], 'int32')
-        elif outputActivation == 'softmax':
+        elif activation == 'softmax':
             # This is a pain in the ass!
             self.loss = self.nll_multiclass
             self.errors = self.predictionErrors
             self.pred = T.argmax(self.output, axis=-1)
-            self.obs_pred = T.argmax(self.obs, axis=-1)[:,1:]
-
         else:
-            raise NotImplementedError
+            pass
+            # raise NotImplementedError
 
 
-    def mse(self):
-        return T.mean((self.output - self.obs[:, 1:, :]) ** 2)
+    def mse(self, y):
+        # error between output and target
+        return T.mean((self.output - y) ** 2)
 
-    def nll_binary(self):
+    def nll_binary(self, y):
         # negative log likelihood based on binary cross entropy error
-        return T.mean(T.nnet.binary_crossentropy(self.output, self.obs[:, 1:, :]))
+        return T.mean(T.nnet.binary_crossentropy(self.output, y))
 
-    def nll_multiclass(self):
+    def nll_multiclass(self, y):
         # negative log likelihood based on multiclass cross entropy error
         #
         # Theano's advanced indexing is limited
@@ -261,10 +257,10 @@ class USE(object):
         # advanced indexing
         p_y = self.output
         p_y_m = T.reshape(p_y, (p_y.shape[0] * p_y.shape[1], -1))
-        y_f = self.obs_pred.flatten(ndim=1)
+        y_f = y.flatten(ndim=1)
         return -T.mean(T.log(p_y_m)[T.arange(p_y_m.shape[0]), y_f])
 
-    def predictionErrors(self):
+    def predictionErrors(self, y):
         """Return a float representing the number of errors in the minibatch
         over the total number of examples of the minibatch ; zero one
         loss over the size of the minibatch
@@ -274,13 +270,13 @@ class USE(object):
                   correct label
         """
         # check if y has same dimension of y_pred
-        if self.obs_pred.ndim != self.pred.ndim:
+        if y.ndim != self.pred.ndim:
             raise TypeError('y should have the same shape as self.pred',
                 ('y', y.type, 'pred', self.pred.type))
         # check if y is of the correct datatype
-        if self.obs_pred.dtype.startswith('int'):
+        if y.dtype.startswith('int'):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
-            return T.mean(T.neq(self.pred, self.obs_pred))
+            return T.mean(T.neq(self.pred, y))
         else:
             raise NotImplementedError()
