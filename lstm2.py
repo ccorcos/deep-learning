@@ -111,7 +111,7 @@ def train_lstm(
 
     load_data, prepare_data = (imdb.load_data, imdb.prepare_data)
 
-    train, valid, test = load_data(n_words=n_words, , maxlen=maxlen)
+    train, valid, test = load_data(n_words=n_words, valid_portion=0.1, maxlen=maxlen)
  
     ydim = numpy.max(train[1]) + 1
 
@@ -123,6 +123,10 @@ def train_lstm(
 
 
     # LSTM weights
+    # g_i
+    # g_f
+    # g_o
+    # c_i
     lstmW = numpy.concatenate([ortho_weight(dim_proj),
                            ortho_weight(dim_proj),
                            ortho_weight(dim_proj),
@@ -143,3 +147,105 @@ def train_lstm(
     # make params shared
     Wemb, lstmW, lstmU, lstmb, U, b
     theano.shared(params[kk], name=kk)
+
+
+    trng = RandomStreams(1234)
+
+    # Used for dropout.
+    use_noise = theano.shared(numpy_floatX(0.))
+
+    x = tensor.matrix('x', dtype='int64')
+    mask = tensor.matrix('mask', dtype=theano.config.floatX)
+    y = tensor.vector('y', dtype='int64')
+
+    n_timesteps = x.shape[0]
+    n_samples = x.shape[1]
+
+    # get the embedded values!
+    x = Wemb[x.flatten()].reshape([n_timesteps, n_samples, dim_proj])
+
+
+    # cut out the gates after parallel matrix multiplication
+    def cut(x, n, dim):
+        return x[:, :, n * dim:(n + 1) * dim]
+
+    def step(mask_t, xWb_t, y_tm1, h_tm1):
+        pre_activation = tensor.dot(y_tm1, lstmU) + xWb_t
+
+        g_i_t = tensor.nnet.sigmoid(cut(pre_activation, 0, dim_proj))
+        c_i_t = tensor.tanh(cut(pre_activation, 3, dim_proj))
+
+        g_f_t = tensor.nnet.sigmoid(cut(pre_activation, 1, dim_proj))
+        h_t = g_f_t * h_tm1 + g_i_t * c_i_t
+        # dropout
+        h_t = mask_t[:, None] * h_t + (1. - mask_t)[:, None] * h_tm1
+
+        g_o_t = tensor.nnet.sigmoid(cut(pre_activation, 2, dim_proj))
+        y_t = g_o_t * tensor.tanh(h_t)
+        # dropout
+        y_t = mask_t[:, None] * y_t + (1. - mask_t)[:, None] * y_tm1
+
+        return y_t, h_t
+
+    # efficiently compute  the input gate, forget gate, 
+    xWb = tensor.dot(x, lstmW) + lstmb
+
+    rval, updates = theano.scan(step,
+                                sequences=[mask, xWb],
+                                outputs_info=[tensor.alloc(numpy_floatX(0.),
+                                                           n_samples,
+                                                           dim_proj),
+                                              tensor.alloc(numpy_floatX(0.),
+                                                           n_samples,
+                                                           dim_proj)],
+                                name=_p('lstm', '_layers'),
+                                n_steps=n_timesteps)
+    y, h = rval
+
+
+
+    proj = y
+
+    # only get the active and mean mool.
+    proj = (proj * mask[:, :, None]).sum(axis=0)
+    proj = proj / mask.sum(axis=0)[:, None]
+    
+
+    # proj = dropout_layer(proj, use_noise, trng)
+
+    proj = tensor.switch(use_noise, 
+                        (proj * trng.binomial(proj.shape, p=0.5, n=1, dtype=proj.dtype)),
+                         proj * 0.5)
+
+
+
+    pred = tensor.nnet.softmax(tensor.dot(proj, U) + b)
+
+    f_pred_prob = theano.function([x, mask], pred, name='f_pred_prob')
+    f_pred = theano.function([x, mask], pred.argmax(axis=1), name='f_pred')
+
+    # negative log likelihood
+    cost = -tensor.log(pred[tensor.arange(n_samples), y] + 1e-8).mean()
+
+    # L2 reg
+    decay_c = theano.shared(numpy_floatX(decay_c), name='decay_c')
+    weight_decay = 0.
+    weight_decay += (U ** 2).sum()
+    weight_decay *= decay_c
+    cost += weight_decay
+
+
+    f_cost = theano.function([x, mask, y], cost, name='f_cost')
+
+    grads = tensor.grad(cost, wrt=[Wemb, lstmW, lstmU, lstmb, U, b])
+    f_grad = theano.function([x, mask, y], grads, name='f_grad')
+
+    lr = tensor.scalar(name='lr')
+
+
+
+    f_grad_shared, f_update = optimizer(lr, params, grads, x, mask, y, cost)
+
+    # cost = f_grad_shared(x, mask, y)
+    # f_update(lrate)
+    
