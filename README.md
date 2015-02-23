@@ -2,11 +2,13 @@
 
 ## To Do
 
-Various other optimization emthods
+Various other optimization emthods on USE, SE, etc.
+Try using multiplicative RNN!
 LSTM
-Writing.
-Try this on a 2d SLAM dataset.
-  - embedding visualization http://lvdmaaten.github.io/tsne/
+Writing DL.md
+https://imgur.com/a/Hqolp
+
+- embedding visualization http://lvdmaaten.github.io/tsne/
 
 Embedding Layer better
 - branch USE, SSE, EUSE and remove them from master

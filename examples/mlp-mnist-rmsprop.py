@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.MLP import MLP
-from DL.optimizers.adadelta import adadelta
+from DL.optimizers.rmsprop import rmsprop
 from DL import datasets
 from DL.utils import *
 import time
@@ -51,8 +51,8 @@ cost = (
 errors = mlp.errors(t)
 params = flatten(mlp.params)
 
-print "training the MLP with adadelta"
-adadelta(dataset=dataset,
+print "training the MLP with rmsprop"
+rmsprop(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,

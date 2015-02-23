@@ -6,7 +6,7 @@ import theano.tensor as T
 import numpy
 import time
 
-def adadelta(dataset=None,
+def rmsprop(dataset=None,
              inputs=None,
              cost=None,
              params=None,
@@ -38,7 +38,7 @@ def adadelta(dataset=None,
     if n_test_batches == 0:
         n_test_batches = 1
 
-    print "adadelta: compiling test function"
+    print "rmsprop: compiling test function"
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
     test_givens = list(updates)
@@ -55,31 +55,32 @@ def adadelta(dataset=None,
         givens=test_givens
     )
 
-    print "adadelta: compiling validate function"
+    print "rmsprop: compiling validate function"
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
         givens=valid_givens
     )
 
-    print "adadelta: computing gradients"
+    print "rmsprop: computing gradients"
     gparams = [T.grad(cost, param) for param in params]
 
     # http://deeplearning.net/tutorial/code/lstm.py
     zipped_grads = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
-    running_up2 = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
+    running_grads = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
     running_grads2 = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
 
     zgup = [(zg, g) for zg, g in zip(zipped_grads, gparams)]
+    rgup = [(rg, 0.95 * rg + 0.05 * g) for rg, g in zip(running_grads, gparams)]
     rg2up = [(rg2, 0.95 * rg2 + 0.05 * (g ** 2)) for rg2, g in zip(running_grads2, gparams)]
 
-    updir = [-T.sqrt(ru2 + 1e-6) / T.sqrt(rg2 + 1e-6) * zg for zg, ru2, rg2 in zip(zipped_grads, running_up2, running_grads2)]
-    ru2up = [(ru2, 0.95 * ru2 + 0.05 * (ud ** 2)) for ru2, ud in zip(running_up2, updir)]
-    param_up = [(p, p + ud) for p, ud in zip(params, updir)]
+    updir = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
+    updir_new = [(ud, 0.9 * ud - 1e-4 * zg / T.sqrt(rg2 - rg ** 2 + 1e-4)) for ud, zg, rg, rg2 in zip(updir, zipped_grads, running_grads, running_grads2)]
+    param_up = [(p, p + udn[1]) for p, udn in zip(params, updir_new)]
+    
+    updates = zgup + rgup + rg2up + updir_new + param_up
 
-    updates = zgup + rg2up + ru2up + param_up
-
-    print "adadelta: compiling training function"
+    print "rmsprop: compiling training function"
     # compiling a Theano function `train_model` that returns the cost, but in
     # the same time updates the parameter of the model based on the rules
     # defined in `updates`
