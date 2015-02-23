@@ -2,7 +2,8 @@
 
 ## To Do
 
-Various other optimization emthods on USE, SE, etc.
+LSTM -- change dropout implementation?
+Various other optimization emthods on USE, SSE, EUSE
 Try using multiplicative RNN!
 LSTM
 Writing DL.md
