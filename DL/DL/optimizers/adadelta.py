@@ -13,8 +13,6 @@ def adadelta(dataset=None,
              cost=None,
              params=None,
              errors=None,
-             learning_rate=0.01, 
-             momentum=0.1,
              n_epochs=1000,
              batch_size=20,
              patience=10000,
@@ -42,7 +40,7 @@ def adadelta(dataset=None,
     if n_test_batches == 0:
         n_test_batches = 1
 
-    print "sgdem: compiling test function"
+    print "adadelta: compiling test function"
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
     test_givens = list(updates)
@@ -59,58 +57,37 @@ def adadelta(dataset=None,
         givens=test_givens
     )
 
-    print "sgdem: compiling validate function"
+    print "adadelta: compiling validate function"
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
         givens=valid_givens
     )
 
-    print "sgdem: computing gradients"
+    print "adadelta: computing gradients"
     gparams = [T.grad(cost, param) for param in params]
 
 
     # def adadelta(lr, tparams, grads, x, mask, y, cost):
-    zipped_grads = [theano.shared(p.get_value() * numpy_floatX(0.)), for p in params]
-    running_up2 = [theano.shared(p.get_value() * numpy_floatX(0.)), for p in params]
-    running_grads2 = [theano.shared(p.get_value() * numpy_floatX(0.)), for p in params]
+    zipped_grads = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
+    running_up2 = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
+    running_grads2 = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
 
+    zgup = [(zg, g) for zg, g in zip(zipped_grads, gparams)]
+    rg2up = [(rg2, 0.95 * rg2 + 0.05 * (g ** 2)) for rg2, g in zip(running_grads2, gparams)]
 
+    # f_grad_shared = theano.function(inputs, cost, updates=zgup + rg2up, name='adadelta_f_grad_shared')
 
+    updir = [-T.sqrt(ru2 + 1e-6) / T.sqrt(rg2 + 1e-6) * zg for zg, ru2, rg2 in zip(zipped_grads, running_up2, running_grads2)]
+    ru2up = [(ru2, 0.95 * ru2 + 0.05 * (ud ** 2)) for ru2, ud in zip(running_up2, updir)]
+    param_up = [(p, p + ud) for p, ud in zip(params, updir)]
 
-    zgup = [(zg, g) for zg, g in zip(zipped_grads, grads)]
-    rg2up = [(rg2, 0.95 * rg2 + 0.05 * (g ** 2))
-             for rg2, g in zip(running_grads2, grads)]
+    # f_update = theano.function([], [], updates=ru2up + param_up, on_unused_input='ignore', name='adadelta_f_update')
+    # return f_grad_shared, f_update
 
-    f_grad_shared = theano.function([x, mask, y], cost, updates=zgup + rg2up,
-                                    name='adadelta_f_grad_shared')
+    updates = zgup + rg2up + ru2up + param_up
 
-    updir = [-tensor.sqrt(ru2 + 1e-6) / tensor.sqrt(rg2 + 1e-6) * zg
-             for zg, ru2, rg2 in zip(zipped_grads,
-                                     running_up2,
-                                     running_grads2)]
-    ru2up = [(ru2, 0.95 * ru2 + 0.05 * (ud ** 2))
-             for ru2, ud in zip(running_up2, updir)]
-    param_up = [(p, p + ud) for p, ud in zip(tparams.values(), updir)]
-
-    f_update = theano.function([lr], [], updates=ru2up + param_up,
-                               on_unused_input='ignore',
-                               name='adadelta_f_update')
-
-    return f_grad_shared, f_update
-
-
-
-
-
-    momentums = [theano.shared(numpy.zeros(param.get_value(borrow=True).shape, dtype=theano.config.floatX)) for param in params]
-    updates = []
-    for param, gparam, mom in zip(params, gparams, momentums):
-        update = momentum * mom - learning_rate * gparam
-        updates.append((mom, update))
-        updates.append((param, param + update))
-
-    print "sgdem: compiling training function"
+    print "adadelta: compiling training function"
     # compiling a Theano function `train_model` that returns the cost, but in
     # the same time updates the parameter of the model based on the rules
     # defined in `updates`
