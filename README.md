@@ -2,30 +2,12 @@
 
 ## To Do
 
-LSTM -- change dropout implementation?
-Various other optimization emthods on USE, SSE, EUSE
 Try using multiplicative RNN!
+Various other optimization methods on USE, SSE, EUSE
 LSTM
-Writing DL.md
-https://imgur.com/a/Hqolp
+Writing DL.md, https://imgur.com/a/Hqolp
+embedding visualization, http://lvdmaaten.github.io/tsne/
 
-- embedding visualization http://lvdmaaten.github.io/tsne/
-
-Embedding Layer better
-- branch USE, SSE, EUSE and remove them from master
-
-deep rnn
-
-Refactor dropout:
-
-    def dropout_layer(state_before, use_noise, trng):
-        proj = tensor.switch(use_noise,
-                             (state_before *
-                              trng.binomial(state_before.shape,
-                                            p=0.5, n=1,
-                                            dtype=state_before.dtype)),
-                             state_before * 0.5)
-        return proj
 
 ## Getting Started
 
