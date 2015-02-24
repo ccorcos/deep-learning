@@ -57,7 +57,7 @@ def sgd(dataset=None,
     if n_test_batches == 0:
         n_test_batches = 1
 
-    print "sgdem: compiling test function"
+    print "sgd: compiling test function"
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
     test_givens = list(updates)
@@ -74,14 +74,14 @@ def sgd(dataset=None,
         givens=test_givens
     )
 
-    print "sgdem: compiling validate function"
+    print "sgd: compiling validate function"
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
         givens=valid_givens
     )
 
-    print "sgdem: computing gradients"
+    print "sgd: computing gradients"
     gparams = [T.grad(cost, param) for param in params]
     momentums = [theano.shared(numpy.zeros(param.get_value(borrow=True).shape, dtype=theano.config.floatX)) for param in params]
     updates = []
@@ -90,7 +90,7 @@ def sgd(dataset=None,
         updates.append((mom, update))
         updates.append((param, param + update))
 
-    print "sgdem: compiling training function"
+    print "sgd: compiling training function"
     # compiling a Theano function `train_model` that returns the cost, but in
     # the same time updates the parameter of the model based on the rules
     # defined in `updates`

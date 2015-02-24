@@ -1,5 +1,11 @@
 # Some Deep Learning models built with Theano
 
+
+## Refactor
+
+Dropout layer is a simple function
+Error and loss are separate functions
+
 ## To Do
 
 Try using multiplicative RNN!
