@@ -4,6 +4,7 @@
 import theano
 import theano.tensor as T
 import numpy
+import operator
 
 def load_data(dataset, output="int32"):
     ''' Loads the dataset to the GPU
@@ -87,3 +88,18 @@ activations = {
     'linear': lambda x: x,
     'softmax': softmax
 }
+
+def compute_L1(weights):
+    return reduce(operator.add, map(lambda x: abs(x).sum(), weights), 0)
+
+def compute_L2_sqr(weights):
+    return reduce(operator.add, map(lambda x: (x ** 2).sum(), weights), 0)
+
+def layers_L1(layers):
+    return reduce(operator.add, map(lambda x: x.L1, layers), 0)
+
+def layers_L2_sqr(layers):
+    return reduce(operator.add, map(lambda x: x.L2_sqr, layers), 0)
+
+def layers_params(layers):
+    return reduce(operator.add, map(lambda x: x.params, layers), 0)

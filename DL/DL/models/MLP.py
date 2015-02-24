@@ -35,19 +35,21 @@ class MLP(object):
         activation: string, nonlinearity to be applied in the hidden layer
         """
 
-        self.hiddenLayer = HiddenLayer(
+        hiddenLayer = HiddenLayer(
             rng=rng,
             input=input,
             n_in=n_in,
-            dropout_rate=dropout_rate,
             n_out=n_hidden,
             activation=activation,
             params=maybe(lambda: params[0])
         )
 
-        self.outputLayer = HiddenLayer(
+
+        # do dropout here!
+
+        outputLayer = HiddenLayer(
             rng=rng,
-            input=self.hiddenLayer.output,
+            input=hiddenLayer.output,
             n_in=n_hidden,
             dropout_rate=0,
             n_out=n_out,
@@ -55,13 +57,9 @@ class MLP(object):
             params=maybe(lambda: params[1])
         )
 
-        self.layers = [self.hiddenLayer, self.outputLayer]
-        self.params = map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
-        self.updates = reduce(operator.add, map(lambda x: x.updates, self.layers), [])
+        self.layers = [hiddenLayer, outputLayer]
+        self.params = layers_params(self.layers)
+        self.L1 = layers_L1(self.layers)
+        self.L2_sqr = layers_L2_sqr(self.layers)
 
-        self.loss = self.layers[-1].loss
-        self.errors = self.layers[-1].errors
-        self.output = self.layers[-1].output
-        self.pred = self.layers[-1].pred
+        self.output = outputLayer.output

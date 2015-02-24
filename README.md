@@ -6,6 +6,9 @@
 Dropout layer is a simple function
 Error and loss are separate functions
 
+new conventions
+every model needs params, L1, L2_sqr, output, and structural damping for HF
+
 ## To Do
 
 Try using multiplicative RNN!
