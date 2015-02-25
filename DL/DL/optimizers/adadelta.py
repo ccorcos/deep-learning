@@ -5,6 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 import time
+from ..utils import startTimer
 
 def adadelta(dataset=None,
              inputs=None,
@@ -39,6 +40,7 @@ def adadelta(dataset=None,
         n_test_batches = 1
 
     print "adadelta: compiling test function"
+    stop = startTimer("adadelta: compiling test function")
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
     test_givens = list(updates)
@@ -54,16 +56,22 @@ def adadelta(dataset=None,
         outputs=errors,
         givens=test_givens
     )
+    stop()
 
     print "adadelta: compiling validate function"
+    stop = startTimer("adadelta: compiling validate function")
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
         givens=valid_givens
     )
+    stop()
 
     print "adadelta: computing gradients"
-    gparams = [T.grad(cost, param) for param in params]
+    stop = startTimer("adadelta: computing gradients")
+    gparams = T.grad(cost, params)
+    stop()
+
 
     # http://deeplearning.net/tutorial/code/lstm.py
     zipped_grads = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
@@ -80,6 +88,7 @@ def adadelta(dataset=None,
     updates = zgup + rg2up + ru2up + param_up
 
     print "adadelta: compiling training function"
+    stop = startTimer("adadelta: compiling training function")
     # compiling a Theano function `train_model` that returns the cost, but in
     # the same time updates the parameter of the model based on the rules
     # defined in `updates`
@@ -89,6 +98,7 @@ def adadelta(dataset=None,
         updates=updates,
         givens=train_givens
     )
+    stop()
 
     validation_frequency = min(n_train_batches, patience / 2)
 

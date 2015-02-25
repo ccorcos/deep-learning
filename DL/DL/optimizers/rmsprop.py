@@ -5,6 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 import time
+from ..utils import startTimer
 
 def rmsprop(dataset=None,
              inputs=None,
@@ -39,6 +40,7 @@ def rmsprop(dataset=None,
         n_test_batches = 1
 
     print "rmsprop: compiling test function"
+    stop = startTimer("rmsprop: compiling test function")
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
     test_givens = list(updates)
@@ -54,16 +56,21 @@ def rmsprop(dataset=None,
         outputs=errors,
         givens=test_givens
     )
+    stop()
 
     print "rmsprop: compiling validate function"
+    stop = startTimer("rmsprop: compiling validate function")
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
         givens=valid_givens
     )
-
+    stop()
+    
     print "rmsprop: computing gradients"
-    gparams = [T.grad(cost, param) for param in params]
+    stop = startTimer("rmsprop: computing gradients")
+    gparams = T.grad(cost, params)
+    stop()
 
     # http://deeplearning.net/tutorial/code/lstm.py
     zipped_grads = [theano.shared(p.get_value() * numpy.asarray(0., dtype=theano.config.floatX)) for p in params]
@@ -81,6 +88,7 @@ def rmsprop(dataset=None,
     updates = zgup + rgup + rg2up + updir_new + param_up
 
     print "rmsprop: compiling training function"
+    stop = startTimer("rmsprop: compiling training function")
     # compiling a Theano function `train_model` that returns the cost, but in
     # the same time updates the parameter of the model based on the rules
     # defined in `updates`
@@ -90,6 +98,7 @@ def rmsprop(dataset=None,
         updates=updates,
         givens=train_givens
     )
+    stop()
 
     validation_frequency = min(n_train_batches, patience / 2)
 

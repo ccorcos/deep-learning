@@ -5,6 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 import operator
+import time
 
 def load_data(dataset, types):
     ''' Loads the dataset to the GPU
@@ -173,3 +174,11 @@ def ortho_weight(ndim):
     W = numpy.random.randn(ndim, ndim)
     u, s, v = numpy.linalg.svd(W)
     return u.astype(theano.config.floatX)
+
+
+def stopTimer(start, message):
+    print message + " took %0.03f seconds" % (time.clock() - start)
+
+def startTimer(message):
+    start = time.clock()
+    return lambda: stopTimer(start, message)

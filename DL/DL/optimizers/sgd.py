@@ -5,6 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 import time
+from ..utils import startTimer
 
 def sgd(dataset=None,
         inputs=None,
@@ -58,6 +59,7 @@ def sgd(dataset=None,
         n_test_batches = 1
 
     print "sgd: compiling test function"
+    stop = startTimer("sgd: compiling test function")
     # compiling a Theano function that computes the mistakes that are made
     # by the model on a minibatch
     test_givens = list(updates)
@@ -73,16 +75,22 @@ def sgd(dataset=None,
         outputs=errors,
         givens=test_givens
     )
+    stop()
 
     print "sgd: compiling validate function"
+    stop = startTimer("sgd: compiling validate function")
     validate_model = theano.function(
         inputs=[index],
         outputs=errors,
         givens=valid_givens
     )
+    stop()
 
     print "sgd: computing gradients"
-    gparams = [T.grad(cost, param) for param in params]
+    stop = startTimer("sgd: computing gradients")
+    gparams = T.grad(cost, params)
+    stop()
+
     momentums = [theano.shared(numpy.zeros(param.get_value(borrow=True).shape, dtype=theano.config.floatX)) for param in params]
     updates = []
     for param, gparam, mom in zip(params, gparams, momentums):
@@ -91,6 +99,7 @@ def sgd(dataset=None,
         updates.append((param, param + update))
 
     print "sgd: compiling training function"
+    stop = startTimer("sgd: compiling training function")
     # compiling a Theano function `train_model` that returns the cost, but in
     # the same time updates the parameter of the model based on the rules
     # defined in `updates`
@@ -100,6 +109,7 @@ def sgd(dataset=None,
         updates=updates,
         givens=train_givens
     )
+    stop()
 
     validation_frequency = min(n_train_batches, patience / 2)
 
