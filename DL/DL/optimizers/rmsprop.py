@@ -47,9 +47,14 @@ def rmsprop(dataset=None,
     valid_givens = list(updates)
     train_givens = list(updates)
     for i in range(len(inputs)):
+        theano.printing.debugprint(inputs[i], print_type=True)
+        theano.printing.debugprint(test_set[i][index * batch_size:(index + 1) * batch_size], print_type=True)
+
         test_givens.append((inputs[i], test_set[i][index * batch_size:(index + 1) * batch_size]))
         valid_givens.append((inputs[i], valid_set[i][index * batch_size:(index + 1) * batch_size]))
         train_givens.append((inputs[i], train_set[i][index * batch_size:(index + 1) * batch_size]))
+
+
 
     test_model = theano.function(
         inputs=[index],

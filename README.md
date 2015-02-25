@@ -3,6 +3,9 @@
 
 ## To Do
 
+TypeError: Cannot convert Type TensorType(float64, matrix) (of Variable Subtensor{int64:int64:}.0) into Type TensorType(int32, matrix). You can try to manually convert Subtensor{int64:int64:}.0 into a TensorType(int32, matrix).
+
+
 LSTM
 - masking
 - try on dice model

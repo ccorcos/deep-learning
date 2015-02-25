@@ -64,6 +64,9 @@ class LSTM(object):
 
     def __init__(self, rng, input, mask, n_units, activation='tanh', params=None):
         
+        print 'lstm input', input, input.type
+        print 'lstm mask', mask, mask.type
+
         # LSTM weights
         W = None
         U = None
@@ -98,45 +101,63 @@ class LSTM(object):
 
         # cut out the gates after parallel matrix multiplication
         def cut(x, n, dim):
-            return x[:, :, n * dim:(n + 1) * dim]
+            return x[:, n * dim:(n + 1) * dim]
 
         f = activations[activation]
         s = activations['sigmoid']
         def step(mask_t, xWb_t, y_tm1, h_tm1):
-            pre_activation = tensor.dot(y_tm1, U) + xWb_t
+            # (n_examples, 4*n_units)
+            pre_activation = T.dot(y_tm1, U) + xWb_t
 
             g_i_t = s(cut(pre_activation, 0, n_units))
             c_i_t = f(cut(pre_activation, 3, n_units))
 
             g_f_t = s(cut(pre_activation, 1, n_units))
             h_t = g_f_t * h_tm1 + g_i_t * c_i_t
-            # dropout
+            # mask for valid inputs
             h_t = mask_t[:, None] * h_t + (1. - mask_t)[:, None] * h_tm1
 
             g_o_t = s(cut(pre_activation, 2, n_units))
             y_t = g_o_t * f(h_t)
-            # dropout
+            # mask for valid inputs
             y_t = mask_t[:, None] * y_t + (1. - mask_t)[:, None] * y_tm1
 
             return y_t, h_t
 
 
+        # input is initially (n_examples, n_timesteps, n_units)
+        # we want to scan over timesteps!
+        input = input.dimshuffle(1,0,2)
+        # mask is (n_examples, maxlen)
+        mask = mask.dimshuffle(1,0)
+
         # timesteps, samples, dimension
-        n_timesteps = input.shape[0]
+        # n_timesteps = input.shape[0]
         n_samples = input.shape[1]
 
-        # efficiently compute  the input gate, forget gate, 
-        xWb = tensor.dot(input, W) + b
+
+        # efficiently compute  the input gate, forget gate,
+        # (n_timesteps, n_examples, 4 * n_units)
+        xWb = T.dot(input, W) + b
+
+        print 'lstm xWb', xWb, xWb.type
 
         [y, h], updates = theano.scan(step,
                                     sequences=[mask, xWb],
-                                    outputs_info=[tensor.alloc(numpy_floatX(0.), n_samples, n_units),
-                                                  tensor.alloc(numpy_floatX(0.), n_samples, n_units)])
+                                    outputs_info=[T.alloc(numpy.asarray(0., dtype=theano.config.floatX), n_samples, n_units),
+                                                  T.alloc(numpy.asarray(0., dtype=theano.config.floatX), n_samples, n_units)])
                                     # n_steps=n_timesteps)
+
+        # swap the dimensions back to (n_examples, n_timesteps, n_units)
+        h = h.dimshuffle(1,0,2)
+        y = y.dimshuffle(1,0,2)
 
         self.params = [U, W, b]
         self.weights = [U, W]
         self.L1 = compute_L1(self.weights)
         self.L2_sqr = compute_L2_sqr(self.weights)
+
+        print 'lstm y', y, y.type
+        print 'lstm h', h, h.type
 
         self.output = y

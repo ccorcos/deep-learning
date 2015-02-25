@@ -4,6 +4,7 @@ import cPickle as pickle
 import os
 import urllib
 import gzip
+from ..utils import untuple
 
 datasetPath = '/'.join((__file__.split('/')[:-1]+['']))
  
@@ -28,7 +29,8 @@ def getDataset(name, url):
         return data
 
 def mnist():
-    return getDataset('mnist.pkl.gz', 'http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz')
+    dataset = getDataset('mnist.pkl.gz', 'http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz')
+    return untuple(dataset)
 
 
 def imdb(validation_ratio=0.1, vocabulary_size=10000, maxlen=100):
@@ -96,5 +98,6 @@ def imdb(validation_ratio=0.1, vocabulary_size=10000, maxlen=100):
     valid = (valid_set_x, valid_set_y)
     test = (test_set_x, test_set_y)
 
-    return [train, valid, test]
+    dataset = [train, valid, test]
+    return untuple(dataset)
 

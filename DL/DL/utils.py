@@ -19,24 +19,26 @@ def load_data(dataset, types):
     types is an array of types "int32" or "float32"
     '''
 
-    def shared_dataset(data_xy, borrow=True):
+    def shared_dataset(data, borrow=True):
         """ Function that loads the dataset into shared variables
 
         Create a shared dataset, copying the whole thing to the GPU.
         We dont want to copy each minibatch over one at a time.
         """
         sharedData = []
-        for data, t, in zip(data_xy, types):
-            shared = theano.shared(numpy.asarray(data,
+        for input, t, in zip(data, types):
+            shared = theano.shared(numpy.asarray(input,
                                                    dtype=theano.config.floatX),
                                                    borrow=borrow)
-            sharedData.append(shared)
+            
 
-        # You have to store values on the GPU as floats. But the y is 
-        # really an int so we'll cast back to an int for what we return
-        if t == 'int32':
-            sharedData[-1] = T.cast(sharedData[-1], 'int32')
-        
+            # You have to store values on the GPU as floats. But the y is 
+            # really an int so we'll cast back to an int for what we return
+            # if t is not theano.config.floatX:
+            #     shared = shared.astype(t)
+
+            sharedData.append(shared)
+            
         return sharedData
 
     test_set = shared_dataset(dataset[2])
@@ -182,3 +184,35 @@ def stopTimer(start, message):
 def startTimer(message):
     start = time.clock()
     return lambda: stopTimer(start, message)
+
+def sequencePadAndMask(seqs):
+  """
+  takes a sequence of (n_samples, n_timeteps, ...)
+  pads every sequences to the maxlen of timesteps for all sequences
+  also produces a mask
+  """
+
+  n_samples = len(seqs)
+  lengths = map(len, seqs)
+  maxlen = max(lengths)
+
+  x = numpy.zeros((n_samples, maxlen))
+  x_mask = numpy.zeros((n_samples, maxlen))
+
+  for idx, s in enumerate(seqs):
+      x[idx, 0:lengths[idx]] = s
+      x_mask[idx, 0:lengths[idx]] = 1.
+
+  return x, x_mask
+
+def datasetPadAndMask(dataset, sequenceIdx):
+    """
+    for each set in the dataset, it find the sequence at the sequenceIdx
+    and pads and masks it, then mutates the dataset and append the mask as
+    the last value in the dataset
+    """
+    for s in dataset:
+        seq = s[sequenceIdx]
+        paddedSeq, seqMask = sequencePadAndMask(seq)
+        s[sequenceIdx] = paddedSeq
+        s.append(seqMask)
