@@ -6,18 +6,20 @@ import theano.tensor as T
 import numpy
 import time
 from ..utils import startTimer
+import random
 
 def rmsprop(dataset=None,
-             inputs=None,
-             cost=None,
-             params=None,
-             errors=None,
-             n_epochs=1000,
-             batch_size=20,
-             patience=10000,
-             patience_increase=2,
-             improvement_threshold=0.995,
-             updates=[]):
+            inputs=None,
+            cost=None,
+            params=None,
+            errors=None,
+            n_epochs=1000,
+            batch_size=20,
+            patience=10000,
+            patience_increase=2,
+            improvement_threshold=0.995,
+            updates=[],
+            test_batches=-1):
 
 
     # index to a [mini]batch
@@ -134,7 +136,11 @@ def rmsprop(dataset=None,
                     best_validation_loss = this_validation_loss
                     best_iter = iteration
                     # remember the test loss as well
-                    test_losses = [test_model(i) for i in xrange(n_test_batches)]
+                    test_losses = None
+                    if test_batches > 0:
+                        test_losses = [test_model(i) for i in random.sample(range(n_test_batches), test_batches)]
+                    else:
+                        test_losses = [test_model(i) for i in xrange(n_test_batches)]
                     test_loss = numpy.mean(test_losses)
                     print '     epoch %i, minibatch %i/%i, best test error %f %%' % (epoch, minibatch_index + 1, n_train_batches, test_loss * 100.)
 

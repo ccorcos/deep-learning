@@ -50,8 +50,8 @@ mask = T.matrix('mask')     # mask for valid words (n_examples, maxlen)
 
 inputs = [x, t, mask]       # the mask comes last!
 
-x = x.astype('int32')      
-t = t.astype('int32')         
+ix = x.astype('int32')      
+it = t.astype('int32')         
 
 
 rng = numpy.random.RandomState(int(time.time())) # random number generator
@@ -59,7 +59,7 @@ srng = T.shared_randomstreams.RandomStreams(int(time.time()))
 
 embeddingLayer = EmbeddingLayer(
     rng=rng, 
-    input=x, 
+    input=ix, 
     n_in=vocabulary_size, 
     n_out=dim_proj, 
     onehot=False
@@ -115,16 +115,14 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    nll_multiclass(y, t)
+    nll_multiclass(y, it)
     + L1_reg * L1
     + L2_reg * L2_sqr
 )
 
 pred = pred_multiclass(y)
 
-errors = pred_error(pred, t)
-
-# theano.printing.debugprint(errors, print_type=True)
+errors = pred_error(pred, it)
 
 params = flatten(layers_params(layers))
 
@@ -136,15 +134,16 @@ rmsprop(dataset=dataset,
         errors=errors,
         n_epochs=1000,
         batch_size=100,
-        patience=10,
-        patience_increase=2,
-        improvement_threshold=0.995)
+        patience=500,
+        patience_increase=1.5,
+        improvement_threshold=0.995,
+        test_batches=1)
 
 print "compiling the prediction function"
 predict = theano.function(inputs=[x, mask], outputs=pred)
 
 print "predicting the first 10 samples of the test dataset"
-print "predict:", predict(dataset[2][0][0:10], dataset[2][-1][0:10])
-print "answer: ", dataset[2][1][0:10]
+print "predict:", predict(dataset[2][0].get_value()[0:10], dataset[2][-1].get_value()[0:10])
+print "answer: ", dataset[2][1].get_value()[0:10]
 
 

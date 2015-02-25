@@ -28,7 +28,7 @@ x = T.matrix('x')  # input
 t = T.vector('t')  # targets
 inputs = [x, t]
 # cast to an int. needs to be initially a float to load to the GPU
-t = t.astype('int64')
+it = t.astype('int64')
 
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 # srng = RandomStreams(int(time.time()))
@@ -51,14 +51,14 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    nll_multiclass(mlp.output, t)
+    nll_multiclass(mlp.output, it)
     + L1_reg * mlp.L1
     + L2_reg * mlp.L2_sqr
 )
 
 pred = pred_multiclass(mlp.output)
 
-errors = pred_error(pred, t)
+errors = pred_error(pred, it)
 
 params = flatten(mlp.params)
 

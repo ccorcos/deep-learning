@@ -51,7 +51,7 @@ x = T.tensor3('x')  # input
 t = T.tensor3('t')  # targets
 inputs = [x,t]
 # cast to an int. needs to be initially a float to load to the GPU
-t = t.astype('int64')
+it = t.astype('int64')
 
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 
@@ -70,14 +70,14 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    nll_binary(rnn.output, t)
+    nll_binary(rnn.output, it)
     + L1_reg * rnn.L1
     + L2_reg * rnn.L2_sqr
 )
 
 pred = pred_binary(rnn.output)
 
-errors = pred_error(pred, t)
+errors = pred_error(pred, it)
 
 params = flatten(rnn.params)
 
