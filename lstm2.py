@@ -198,35 +198,35 @@ def train_lstm(
 
 
 
-    proj = y
+    # proj = y
 
-    # only get the active and mean mool.
-    proj = (proj * mask[:, :, None]).sum(axis=0)
-    proj = proj / mask.sum(axis=0)[:, None]
+    # # only get the active and mean mool.
+    # proj = (proj * mask[:, :, None]).sum(axis=0)
+    # proj = proj / mask.sum(axis=0)[:, None]
     
 
-    # proj = dropout_layer(proj, use_noise, trng)
+    # # proj = dropout_layer(proj, use_noise, trng)
 
-    proj = tensor.switch(use_noise, 
-                        (proj * trng.binomial(proj.shape, p=0.5, n=1, dtype=proj.dtype)),
-                         proj * 0.5)
+    # proj = tensor.switch(use_noise, 
+    #                     (proj * trng.binomial(proj.shape, p=0.5, n=1, dtype=proj.dtype)),
+    #                      proj * 0.5)
 
 
 
-    pred = tensor.nnet.softmax(tensor.dot(proj, U) + b)
+    # pred = tensor.nnet.softmax(tensor.dot(proj, U) + b)
 
-    f_pred_prob = theano.function([x, mask], pred, name='f_pred_prob')
-    f_pred = theano.function([x, mask], pred.argmax(axis=1), name='f_pred')
+    # f_pred_prob = theano.function([x, mask], pred, name='f_pred_prob')
+    # f_pred = theano.function([x, mask], pred.argmax(axis=1), name='f_pred')
 
-    # negative log likelihood
-    cost = -tensor.log(pred[tensor.arange(n_samples), y] + 1e-8).mean()
+    # # negative log likelihood
+    # cost = -tensor.log(pred[tensor.arange(n_samples), y] + 1e-8).mean()
 
-    # L2 reg
-    decay_c = theano.shared(numpy_floatX(decay_c), name='decay_c')
-    weight_decay = 0.
-    weight_decay += (U ** 2).sum()
-    weight_decay *= decay_c
-    cost += weight_decay
+    # # L2 reg
+    # decay_c = theano.shared(numpy_floatX(decay_c), name='decay_c')
+    # weight_decay = 0.
+    # weight_decay += (U ** 2).sum()
+    # weight_decay *= decay_c
+    # cost += weight_decay
 
 
     f_cost = theano.function([x, mask, y], cost, name='f_cost')
