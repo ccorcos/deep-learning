@@ -1,7 +1,22 @@
 # Some Deep Learning models built with Theano
 
 
+branch master to save dbnc
+
+
 ## Refactor
+
+Check:
+mlp-mnist
+mlp-rmsprop
+mlp adadelta
+
+
+fix other models and check them too!
+
+go back and figure out dropout!
+
+make this all work for the rnn!
 
 Dropout layer is a simple function
 Error and loss are separate functions

@@ -45,6 +45,31 @@ def load_data(dataset, types):
     rval = [train_set, valid_set, test_set]
     return rval
 
+def datasetWithDropout(dataset):
+    """
+    adds the dropout toggle to the dataset. the trainin should be on, and the validation
+    and test datasets should be off
+    """
+
+    # dataset shape: 3, n_inputs, n_examples, d_input
+
+    def addDropout(data, toggle):
+        """ 
+        Adds a shared vector for toggling dropout on and off
+        """
+
+        n_examples = data[0].shape[0]
+
+        if toggle:
+          data.insert(0,numpy.ones(n_examples))
+        else:
+          data.insert(0, numpy.zeros(n_examples))
+        
+    addDropout(dataset[0], True)
+    addDropout(dataset[1], False)
+    addDropout(dataset[2], False)
+
+
 def maybe(func, otherwise=None):
     res = None
     try:
@@ -132,3 +157,13 @@ def pred_error(pred, targets):
         # the T.neq operator returns a vector of 0s and 1s, where 1
         # represents a mistake in prediction
         return T.mean(T.neq(pred, targets))
+
+def untuple(a):
+    if isinstance(a, tuple):
+        return untuple(list(a))
+    if isinstance(a, (numpy.ndarray, numpy.generic) ):
+        return a
+    if isinstance(a, list):
+        for i in range(len(a)):
+            a[i] = untuple(a[i])
+    return a

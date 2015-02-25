@@ -14,7 +14,6 @@ import time
 import warnings
 warnings.simplefilter("ignore")
 
-
 print "An MLP on MNIST."
 print "loading MNIST"
 mnist = datasets.mnist()

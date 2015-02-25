@@ -5,7 +5,6 @@
 # import theano.tensor as T
 # import numpy
 from HiddenLayer import HiddenLayer
-from Dropout import dropout
 from ..utils import *
 
 
@@ -18,7 +17,7 @@ class MLP(object):
     sigmoid function  while the top layer is a softamx layer.
     """
 
-    def __init__(self, rng, input, n_in, n_hidden, n_out, dropout_toggle=None, activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, input, n_in, n_hidden, n_out, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -48,13 +47,9 @@ class MLP(object):
             params=maybe(lambda: params[0])
         )
 
-        h = hiddenLayer.output
-        if dropout_toggle is not None:
-            h = dropout(h, dropout_toggle, rng)
-
         outputLayer = HiddenLayer(
             rng=rng,
-            input=h,
+            input=hiddenLayer.output,
             n_in=n_hidden,
             n_out=n_out,
             activation=outputActivation,
