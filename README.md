@@ -3,8 +3,6 @@
 
 ## Refactor
 
-rnn dropout
-
 LSTM with embedding
 
 multiplicative RNN
@@ -14,6 +12,8 @@ multaplicative USE
 CNN
 
 DA
+
+rnn dropout
 
 
 
