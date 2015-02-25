@@ -166,3 +166,10 @@ def dropout(srng, dropout_rate, inp, size=None):
     # The cast is important because int * float32 = float64 which pulls things off the gpu
     output = inp * mask
     return output
+
+# "Exact solutions to the nonlinear dynamics of learning in deep linear neural networks"
+# http://arxiv.org/abs/1312.6120
+def ortho_weight(ndim):
+    W = numpy.random.randn(ndim, ndim)
+    u, s, v = numpy.linalg.svd(W)
+    return u.astype(theano.config.floatX)

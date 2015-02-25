@@ -7,12 +7,7 @@ import numpy
 from ..utils import *
 
 class EmbeddingLayer(object):
-    def __init__(self, rng, input, n_in, n_out, params=None):
-        """
-        
-        """
-
-        self.input = input
+    def __init__(self, rng, input, n_in, n_out, onehot=False, params=None):
     
         # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU
@@ -24,19 +19,19 @@ class EmbeddingLayer(object):
 
         if W is None:
             W_values = numpy.asarray(
-                rng.uniform(
-                    low=-numpy.sqrt(6. / (n_in + n_out)),
-                    high=numpy.sqrt(6. / (n_in + n_out)),
-                    size=(n_in, n_out)
-                ),
+                rng.randn(n_in, n_out),
                 dtype=theano.config.floatX
             )
 
-            W = theano.shared(value=W_values, name='W', borrow=True)
+            W = theano.shared(value=W_values * 0.01, name='W', borrow=True)
 
-        self.W = W
-        self.output = T.dot(input, self.W)
-       
-        self.params = [self.W]
+        if onehot:
+            self.output = T.dot(input, W)
+        else:
+            # change the last dimension to the projected dimensino
+            shape = T.concatenate([input.shape[:-1], [n_out]])
+            self.output = W[input.flatten()].reshape(shape)
+
+        self.params = [W]
         self.L1 = 0
-        self.L2_sqr = (self.W ** 2).sum()
+        self.L2_sqr = (W ** 2).sum()

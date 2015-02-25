@@ -3,9 +3,12 @@
 
 ## Refactor
 
-LSTM with embedding
+tensor.alloc in RNN instead of repeat
 
-multiplicative RNN
+LSTM with embedding, use embedding and mlp classes
+
+multiplicative RNN for character prediction
+implement hf optimization!
 
 multaplicative USE
 
