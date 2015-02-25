@@ -56,7 +56,7 @@ class RNN(object):
                  -----{t-1}----     
     """
 
-    def __init__(self, rng, input, n_in, n_hidden, n_out, dropout_rate=0, srng=None, activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, input, n_in, n_hidden, n_out, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the recurrent neural network
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -107,16 +107,9 @@ class RNN(object):
             params=maybe(lambda: params[1])
         )
 
-        h_t = hiddenLayer.output
-
-        if dropout_rate > 0:
-            assert(srng is not None)
-            # use the input shape so we dont get that weird graph issue where it thinks it needs x_t
-            h_t = dropout(srng, dropout_rate, h_t, (input.shape[0], theano.shared(value=n_hidden, name='n_hidden')))
-
         outputLayer = HiddenLayer(
             rng=rng,
-            input=h_t,
+            input=hiddenLayer.output,
             n_in=n_hidden,
             n_out=n_out,
             activation=outputActivation,
