@@ -20,7 +20,7 @@ print "loading MNIST"
 mnist = datasets.mnist()
 
 print "loading data to the GPU"
-dataset = load_data(mnist)
+dataset = load_data(mnist, ["float32", "int32"])
 
 print "creating the MLP"
 x = T.matrix('x')  # input
@@ -43,12 +43,15 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    mlp.loss(t)
+    nll_multiclass(mlp.output, t)
     + L1_reg * mlp.L1
     + L2_reg * mlp.L2_sqr
 )
 
-errors = mlp.errors(t)
+pred = pred_multiclass(mlp.output)
+
+errors = pred_error(pred, t)
+
 params = flatten(mlp.params)
 
 print "training the MLP with sgd"
@@ -61,12 +64,12 @@ sgd(dataset=dataset,
     momentum=0.2,
     n_epochs=1000,
     batch_size=20,
-    patience=10000,
-    patience_increase=2,
+    patience=1000,
+    patience_increase=1.5,
     improvement_threshold=0.995)
 
 print "compiling the prediction function"
-predict = theano.function(inputs=[x], outputs=mlp.pred)
+predict = theano.function(inputs=[x], outputs=pred)
 
 print "predicting the first 10 samples of the test dataset"
 print "predict:", predict(mnist[2][0][0:10])

@@ -5,8 +5,9 @@
 # import theano.tensor as T
 # import numpy
 from HiddenLayer import HiddenLayer
-import operator
+from Dropout import dropout
 from ..utils import *
+
 
 class MLP(object):
     """Multi-Layer Perceptron Class
@@ -17,7 +18,7 @@ class MLP(object):
     sigmoid function  while the top layer is a softamx layer.
     """
 
-    def __init__(self, rng, input, n_in, n_hidden, n_out, dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, input, n_in, n_hidden, n_out, dropout_toggle=None, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -33,6 +34,9 @@ class MLP(object):
         dropout_rate: float, if dropout_rate is non zero, then we implement a Dropout in the hidden layer
 
         activation: string, nonlinearity to be applied in the hidden layer
+
+        dropout_toggle is a shared variable for using dropout. Either a 0 or a 1
+        theano.shared(numpy_floatX(0.))
         """
 
         hiddenLayer = HiddenLayer(
@@ -44,14 +48,14 @@ class MLP(object):
             params=maybe(lambda: params[0])
         )
 
-
-        # do dropout here!
+        h = hiddenLayer.output
+        if dropout_toggle is not None:
+            h = dropout(h, dropout_toggle, rng)
 
         outputLayer = HiddenLayer(
             rng=rng,
-            input=hiddenLayer.output,
+            input=h,
             n_in=n_hidden,
-            dropout_rate=0,
             n_out=n_out,
             activation=outputActivation,
             params=maybe(lambda: params[1])

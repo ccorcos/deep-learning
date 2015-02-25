@@ -56,7 +56,7 @@ class HiddenLayer(object):
 
 
         self.output_linear = T.dot(input, W) + b
-        self.output = (output_linear if activation is None else activations[activation](output_linear))
+        self.output = (self.output_linear if activation is None else activations[activation](self.output_linear))
 
         self.params = [W, b]
         self.weights = [W]

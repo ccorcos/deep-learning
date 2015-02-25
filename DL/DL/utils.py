@@ -6,7 +6,7 @@ import theano.tensor as T
 import numpy
 import operator
 
-def load_data(dataset, output="int32"):
+def load_data(dataset, types):
     ''' Loads the dataset to the GPU
 
     dataset = [train_set, valid_set, test_set]
@@ -14,6 +14,8 @@ def load_data(dataset, output="int32"):
     each set is a tuple (input, target)
     input is a matrix where rows are a sample
     target is a 1d array of what output should be
+
+    types is an array of types "int32" or "float32"
     '''
 
     def shared_dataset(data_xy, borrow=True):
@@ -23,7 +25,7 @@ def load_data(dataset, output="int32"):
         We dont want to copy each minibatch over one at a time.
         """
         sharedData = []
-        for data in data_xy:
+        for data, t, in zip(data_xy, types):
             shared = theano.shared(numpy.asarray(data,
                                                    dtype=theano.config.floatX),
                                                    borrow=borrow)
@@ -31,7 +33,7 @@ def load_data(dataset, output="int32"):
 
         # You have to store values on the GPU as floats. But the y is 
         # really an int so we'll cast back to an int for what we return
-        if output == 'int32':
+        if t == 'int32':
             sharedData[-1] = T.cast(sharedData[-1], 'int32')
         
         return sharedData
@@ -102,4 +104,31 @@ def layers_L2_sqr(layers):
     return reduce(operator.add, map(lambda x: x.L2_sqr, layers), 0)
 
 def layers_params(layers):
-    return reduce(operator.add, map(lambda x: x.params, layers), 0)
+    return reduce(operator.add, map(lambda x: x.params, layers), [])
+
+def mse(output, targets):
+    return T.mean((output - targets) ** 2)
+
+def nll_binary(output, targets):
+    # negative log likelihood based on binary cross entropy error
+    return T.mean(T.nnet.binary_crossentropy(output, targets))    
+
+def nll_multiclass(output, targets):
+    return -T.mean(T.log(output)[T.arange(targets.shape[0]), targets])
+
+def pred_binary(output):
+    return T.round(output)  # round to {0,1}
+
+def pred_multiclass(output):
+    return T.argmax(output, axis=-1)
+
+def pred_error(pred, targets):
+    # check if y has same dimension of y_pred
+    if targets.ndim != pred.ndim:
+        raise TypeError('targets should have the same shape as pred', ('targets', targets.type, 'pred', pred.type))
+    
+    # check if targets is of the correct datatype
+    if targets.dtype.startswith('int'):
+        # the T.neq operator returns a vector of 0s and 1s, where 1
+        # represents a mistake in prediction
+        return T.mean(T.neq(pred, targets))
