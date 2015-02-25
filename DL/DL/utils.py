@@ -156,9 +156,13 @@ def untuple(a):
             a[i] = untuple(a[i])
     return a
 
-def dropout(srng, dropout_rate, input):
+# allow to specify the size separately -- sometimes an issue when cloning, scanning, etc.
+# see the theano-tests/random-streams-scan-clone.py
+def dropout(srng, dropout_rate, inp, size=None):
+    if size is None:
+      size = inp.shape  
     # p=1-p because 1's indicate keep and p is prob of dropping
-    mask = srng.binomial(n=1, p=1-dropout_rate, size=input.shape, dtype=theano.config.floatX)
+    mask = srng.binomial(n=1, p=1-dropout_rate, size=size, dtype=theano.config.floatX)
     # The cast is important because int * float32 = float64 which pulls things off the gpu
-    output = input * mask
+    output = inp * mask
     return output

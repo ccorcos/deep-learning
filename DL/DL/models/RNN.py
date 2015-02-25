@@ -28,7 +28,7 @@ class Recurrence(object):
 
         h0_t = T.extra_ops.repeat(recurrent_0[numpy.newaxis, :], input.shape[0], axis=0)
 
-        [h, y], scanUpdates = theano.scan(step,
+        [h, y], _ = theano.scan(step,
                             sequences=[input.dimshuffle(1,0,2),], # swap the first two dimensions to scan over n_timesteps
                             outputs_info=[h0_t, None])
 
@@ -38,7 +38,6 @@ class Recurrence(object):
 
         self.output = y
         self.recurrent = h
-        self.updates = scanUpdates
 
 
 
@@ -112,7 +111,8 @@ class RNN(object):
 
         if dropout_rate > 0:
             assert(srng is not None)
-            h_t = dropout(srng, dropout_rate, h_t)
+            # use the input shape so we dont get that weird graph issue where it thinks it needs x_t
+            h_t = dropout(srng, dropout_rate, h_t, (input.shape[0], theano.shared(value=n_hidden, name='n_hidden')))
 
         outputLayer = HiddenLayer(
             rng=rng,
@@ -142,4 +142,3 @@ class RNN(object):
 
         self.output = recurrence.output
         self.h = recurrence.recurrent
-        self.updates = recurrence.updates
