@@ -18,12 +18,15 @@ print "loading MNIST"
 mnist = datasets.mnist()
 
 print "loading data to the GPU"
-dataset = load_data(mnist, ["float32", "int32"])
+dataset = load_data(mnist)
 
 print "creating the DBN"
 x = T.matrix('x')  # input
-t = T.ivector('t')  # targets
+t = T.vector('t')  # targets
 inputs = [x, t]
+# cast to an int. needs to be initially a float to load to the GPU
+t = t.astype('int64')
+
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 srng = T.shared_randomstreams.RandomStreams(int(time.time()))
 

@@ -7,7 +7,7 @@ import numpy
 import operator
 import time
 
-def load_data(dataset, types):
+def load_data(dataset):
     ''' Loads the dataset to the GPU
 
     dataset = [train_set, valid_set, test_set]
@@ -15,8 +15,6 @@ def load_data(dataset, types):
     each set is a tuple (input, target)
     input is a matrix where rows are a sample
     target is a 1d array of what output should be
-
-    types is an array of types "int32" or "float32"
     '''
 
     def shared_dataset(data, borrow=True):
@@ -26,17 +24,11 @@ def load_data(dataset, types):
         We dont want to copy each minibatch over one at a time.
         """
         sharedData = []
-        for input, t, in zip(data, types):
+        for input in data:
             shared = theano.shared(numpy.asarray(input,
                                                    dtype=theano.config.floatX),
                                                    borrow=borrow)
             
-
-            # You have to store values on the GPU as floats. But the y is 
-            # really an int so we'll cast back to an int for what we return
-            # if t is not theano.config.floatX:
-            #     shared = shared.astype(t)
-
             sharedData.append(shared)
             
         return sharedData

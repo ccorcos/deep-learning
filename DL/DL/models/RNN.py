@@ -107,9 +107,11 @@ class RNN(object):
             params=maybe(lambda: params[1])
         )
 
+        h_t = hiddenLayer.output
+
         outputLayer = HiddenLayer(
             rng=rng,
-            input=hiddenLayer.output,
+            input=h_t,
             n_in=n_hidden,
             n_out=n_out,
             activation=outputActivation,
@@ -130,7 +132,6 @@ class RNN(object):
             recurrent_t=h_t, 
             recurrent_tm1=h_tm1, 
             recurrent_0=h0,
-            updates=srng.updates() if srng else []
         )
 
         self.output = recurrence.output

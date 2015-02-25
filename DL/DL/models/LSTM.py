@@ -64,9 +64,6 @@ class LSTM(object):
 
     def __init__(self, rng, input, mask, n_units, activation='tanh', params=None):
         
-        print 'lstm input', input, input.type
-        print 'lstm mask', mask, mask.type
-
         # LSTM weights
         W = None
         U = None
@@ -140,8 +137,6 @@ class LSTM(object):
         # (n_timesteps, n_examples, 4 * n_units)
         xWb = T.dot(input, W) + b
 
-        print 'lstm xWb', xWb, xWb.type
-
         [y, h], updates = theano.scan(step,
                                     sequences=[mask, xWb],
                                     outputs_info=[T.alloc(numpy.asarray(0., dtype=theano.config.floatX), n_samples, n_units),
@@ -156,8 +151,5 @@ class LSTM(object):
         self.weights = [U, W]
         self.L1 = compute_L1(self.weights)
         self.L2_sqr = compute_L2_sqr(self.weights)
-
-        print 'lstm y', y, y.type
-        print 'lstm h', h, h.type
 
         self.output = y

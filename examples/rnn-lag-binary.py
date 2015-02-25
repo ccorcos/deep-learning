@@ -44,12 +44,15 @@ lagData = ((seq[0:trainIdx,:,:], targets[0:trainIdx,:,:]),
 
 print "loading data to the GPU"
 # if you change this to int32, make you change the target tensor type!
-dataset = load_data(lagData, types=["float32", "int32"])
+dataset = load_data(lagData)
 
 print "creating the RNN"
 x = T.tensor3('x')  # input
-t = T.itensor3('t')  # targets
+t = T.tensor3('t')  # targets
 inputs = [x,t]
+# cast to an int. needs to be initially a float to load to the GPU
+t = t.astype('int64')
+
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 
 rnn = RNN(rng=rng, 

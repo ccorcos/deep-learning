@@ -8,8 +8,9 @@ from ..utils import *
 
 class EmbeddingLayer(object):
     def __init__(self, rng, input, n_in, n_out, sequenceData=True, onehot=False, params=None):
-        # sequenceData tells us if the input dimension is (n_examples, n_timesteps, n_in)
-        # or if it is (n_examples, n_in)
+        # sequenceData tells us if the input dimension is (n_examples, n_timesteps)
+        # or if it is (n_examples)
+        # onhot tell us us if the input dimension is (n_examples, n_timesteps, n_in) or (n_examples, n_in)
 
         # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU

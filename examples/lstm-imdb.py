@@ -16,7 +16,6 @@ import time
 import warnings
 warnings.simplefilter("ignore")
 
-
 print "An LSTM with mean-pooling and embedded words on IMDB for sentiment analysis."
 print "    x ---> x_emb ---> LSTM ---> meanPool ---> softmax ---> {1,0} sentiment"
 print "loading IMDB"
@@ -41,9 +40,8 @@ imdb = datasets.imdb(validation_ratio=validation_ratio, vocabulary_size=vocabula
 datasetPadAndMask(imdb, 0)
 
 print "loading data to the GPU"
-# should I try int64?
-# note that the mask must remain float32!
-dataset = load_data(imdb, ["float64", "float64", "float64"])
+
+dataset = load_data(imdb)
 
 print "creating the LSTM"
 x = T.matrix('x')          # input words, (n_examples, maxlen)
@@ -59,17 +57,6 @@ t = t.astype('int32')
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 srng = T.shared_randomstreams.RandomStreams(int(time.time()))
 
-print "dataset types"
-
-print dataset[0][0].type
-print dataset[0][1].type
-print dataset[0][2].type
-
-print 'theano.config.floatX', theano.config.floatX
-print 'imdb x', x, x.type
-print 'imdb t', t, t.type
-print 'imdb mask', mask, mask.type
-
 embeddingLayer = EmbeddingLayer(
     rng=rng, 
     input=x, 
@@ -80,9 +67,6 @@ embeddingLayer = EmbeddingLayer(
 
 # (n_examples, n_timesteps, dim_proj)
 x_emb = embeddingLayer.output
-
-print 'imdb x_emb', x_emb, x_emb.type
-
 
 lstm = LSTM(
     rng=rng, 
@@ -95,27 +79,19 @@ lstm = LSTM(
 # (n_examples, maxlen, dimproj)
 z = lstm.output
 
-print 'imdb z', z, z.type
-
 # only get the active and mean mool.
 
 # mask[:, :, None].shape = (n_examples, maxlen, 1)
 # (z * mask[:, :, None]).shape = (n_examples, maxlen, dim_proj)
 # (z * mask[:, :, None]).sum(axis=1).shape = (n_examples, dim_proj)
 z = (z * mask[:, :, None]).sum(axis=1)
-print 'imdb z', z, z.type
 
 # mask.sum(axis=1).shape = (n_examples,)
 # mask.sum(axis=1)[:, None].shape = (n_examples,1)
 meanPool = z / mask.sum(axis=1)[:, None]
 # meanPool is now (n_examples, dim_proj)
 
-print 'imdb meanPool', meanPool, meanPool.type
-
 meanPool_drop = dropout(srng, dropout_rate, meanPool)
-
-
-print 'imdb meanPool_drop', meanPool_drop, meanPool_drop.type
 
 outputLayer = HiddenLayer(
     rng=rng, 
@@ -127,8 +103,6 @@ outputLayer = HiddenLayer(
 )
 
 y = outputLayer.output
-
-print 'imdb y', y, y.type
 
 layers = [embeddingLayer, lstm, outputLayer]
 
@@ -146,15 +120,9 @@ cost = (
     + L2_reg * L2_sqr
 )
 
-print 'nll_multiclass(y, t)', nll_multiclass(y, t).type
-
 pred = pred_multiclass(y)
 
-print 'pred', pred.type
-
 errors = pred_error(pred, t)
-
-print 'errors', errors.type
 
 # theano.printing.debugprint(errors, print_type=True)
 
@@ -168,8 +136,8 @@ rmsprop(dataset=dataset,
         errors=errors,
         n_epochs=1000,
         batch_size=100,
-        patience=5000,
-        patience_increase=1.5,
+        patience=10,
+        patience_increase=2,
         improvement_threshold=0.995)
 
 print "compiling the prediction function"
