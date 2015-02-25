@@ -14,25 +14,36 @@ import time
 import warnings
 warnings.simplefilter("ignore")
 
+from theano.sandbox.rng_mrg import MRG_RandomStreams
+
 
 print "An MLP with dropout on MNIST."
 print "loading MNIST"
 mnist = datasets.mnist()
-
+mnist = untuple(mnist)
 print "loading data to the GPU"
-dataset = load_data(mnist)
+
+# pin the dropout_toggle on the front. leave as float32
+datasetWithDropout(mnist)
+dataset = load_data(mnist, ["float32", "float32", "int32"])
 
 print "creating the MLP"
 x = T.matrix('x')  # input
 t = T.ivector('t')  # targets
-inputs = [x, t]
+d = T.vector('dropout_toggle')
+inputs = [d, x, t]
+
 rng = numpy.random.RandomState(int(time.time())) # random number generator
+
+# need a trng for dropout
+trng = MRG_RandomStreams(int(time.time()))
 
 # construct the MLP class
 mlp = MLP(
     rng=rng,
+    trng=trng,
     input=x,
-    dropout_rate=0.5,
+    dropout_toggle=d,
     n_in=28 * 28,
     n_hidden=500,
     n_out=10
@@ -44,12 +55,16 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    mlp.loss(t)
+    nll_multiclass(mlp.output, t)
     + L1_reg * mlp.L1
     + L2_reg * mlp.L2_sqr
 )
 
-errors = mlp.errors(t)
+
+pred = pred_multiclass(mlp.output)
+
+errors = pred_error(pred, t)
+
 params = flatten(mlp.params)
 
 print "training the MLP with sgd"
@@ -67,7 +82,7 @@ sgd(dataset=dataset,
     improvement_threshold=0.995)
 
 print "compiling the prediction function"
-predict = theano.function(inputs=[x], outputs=mlp.pred)
+predict = theano.function(inputs=[x,d], outputs=pred)
 
 print "predicting the first 10 samples of the test dataset"
 print "predict:", predict(mnist[2][0][0:10])
