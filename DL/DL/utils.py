@@ -116,6 +116,19 @@ def nll_binary(output, targets):
 def nll_multiclass(output, targets):
     return -T.mean(T.log(output)[T.arange(targets.shape[0]), targets])
 
+def nll_multiclass_timeseries(output, targets):    
+    # Theano's advanced indexing is limited
+    # therefore we reshape our n_steps x n_seq x n_classes tensor3 of probs
+    # to a (n_steps * n_seq) x n_classes matrix of probs
+    # so that we can use advanced indexing (i.e. get the probs which
+    # correspond to the true class)
+    # the labels targets also must be flattened when we do this to use the
+    # advanced indexing
+    p_y = output
+    p_y_m = T.reshape(p_y, (p_y.shape[0] * p_y.shape[1], -1))
+    y_f = targets.flatten(ndim=1)
+    return -T.mean(T.log(p_y_m)[T.arange(p_y_m.shape[0]), y_f])
+
 def pred_binary(output):
     return T.round(output)  # round to {0,1}
 
@@ -145,7 +158,7 @@ def untuple(a):
 
 def dropout(srng, dropout_rate, input):
     # p=1-p because 1's indicate keep and p is prob of dropping
-    mask = srng.binomial(n=1, p=1-dropout_rate, size=input.shape)
+    mask = srng.binomial(n=1, p=1-dropout_rate, size=input.shape, dtype=theano.config.floatX)
     # The cast is important because int * float32 = float64 which pulls things off the gpu
-    output = input * T.cast(mask, theano.config.floatX)
+    output = input * mask
     return output

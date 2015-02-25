@@ -3,9 +3,7 @@
 
 ## Refactor
 
-
-rnn, probably need new cost function helpers, etc.
-does dropout work on this now?
+rnn dropout
 
 LSTM with embedding
 
