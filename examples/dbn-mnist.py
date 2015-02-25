@@ -10,7 +10,6 @@ from DL import datasets
 from DL.utils import *
 import warnings
 import time
-from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 warnings.simplefilter("ignore")
 
@@ -26,7 +25,7 @@ x = T.matrix('x')  # input
 t = T.ivector('t')  # targets
 inputs = [x, t]
 rng = numpy.random.RandomState(int(time.time())) # random number generator
-srng = RandomStreams(int(time.time()))
+srng = T.shared_randomstreams.RandomStreams(int(time.time()))
 
 # construct the DBN class
 dbn = DBN(

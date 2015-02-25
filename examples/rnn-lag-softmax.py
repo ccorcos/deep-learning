@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.RNN import RNN
-from DL.optimizers.sgd import sgd
+from DL.optimizers.rmsprop import rmsprop
 from DL.utils import *
 import time
 import matplotlib.pyplot as plt
@@ -48,7 +48,7 @@ lagData = ((seq[0:trainIdx,:,:], targets[0:trainIdx,:]),
            (seq[validIdx:,:,:], targets[validIdx:,:]))
 
 print "loading data to the GPU"
-dataset = load_data(lagData, output="int32")
+dataset = load_data(lagData, types=["float32", "int32"])
 
 print "creating the RNN"
 x = T.tensor3('x')  # input
@@ -71,28 +71,29 @@ L2_reg=0.0001
 
 # cost function
 cost = (
-    rnn.loss(t)
+    nll_multiclass_timeseries(rnn.output, t)
     + L1_reg * rnn.L1
     + L2_reg * rnn.L2_sqr
 )
 
-errors = rnn.errors(t)
+pred = pred_multiclass(rnn.output)
+
+errors = pred_error(pred, t)
+
 params = flatten(rnn.params)
 
-print "training the rnn with sgdem"
+print "training the rnn with rmsprop"
 
-sgd(dataset=dataset,
-    inputs=inputs,
-    cost=cost,
-    params=params,
-    errors=errors,
-    learning_rate=0.01,
-    momentum=0.2,
-    n_epochs=5000,
-    batch_size=100,
-    patience=1000,
-    patience_increase=2.,
-    improvement_threshold=0.9995)
+rmsprop(dataset=dataset,
+        inputs=inputs,
+        cost=cost,
+        params=params,
+        errors=errors,
+        n_epochs=5000,
+        batch_size=100,
+        patience=1000,
+        patience_increase=2.,
+        improvement_threshold=0.9995)
 
 print "compiling the prediction function"
 

@@ -9,7 +9,7 @@ from DL.optimizers.rmsprop import rmsprop
 from DL import datasets
 from DL.utils import *
 import time
-from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
+# from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 # hide warnings
 import warnings
@@ -28,7 +28,8 @@ x = T.matrix('x')  # input
 t = T.ivector('t')  # targets
 inputs = [x, t]
 rng = numpy.random.RandomState(int(time.time())) # random number generator
-srng = RandomStreams(int(time.time()))
+# srng = RandomStreams(int(time.time()))
+srng = T.shared_randomstreams.RandomStreams(int(time.time()))
 
 # construct the MLP class
 mlp = MLP(
