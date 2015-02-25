@@ -6,15 +6,12 @@ branch master to save dbnc
 
 ## Refactor
 
-Check:
-mlp-mnist
-mlp-rmsprop
-mlp adadelta
+
+dropout!
 
 
-fix other models and check them too!
+rnn
 
-go back and figure out dropout!
 
 make this all work for the rnn!
 
