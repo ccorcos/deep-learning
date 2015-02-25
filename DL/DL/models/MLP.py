@@ -17,7 +17,7 @@ class MLP(object):
     sigmoid function  while the top layer is a softamx layer.
     """
 
-    def __init__(self, rng, input, n_in, n_hidden, n_out, activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, input, n_in, n_hidden, n_out, srng=None, dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -34,8 +34,6 @@ class MLP(object):
 
         activation: string, nonlinearity to be applied in the hidden layer
 
-        dropout_toggle is a shared variable for using dropout. Either a 0 or a 1
-        theano.shared(numpy_floatX(0.))
         """
 
         hiddenLayer = HiddenLayer(
@@ -47,9 +45,14 @@ class MLP(object):
             params=maybe(lambda: params[0])
         )
 
+        h = hiddenLayer.output
+        if dropout_rate > 0:
+            assert(srng is not None)
+            h = dropout(srng, dropout_rate, h)
+
         outputLayer = HiddenLayer(
             rng=rng,
-            input=hiddenLayer.output,
+            input=h,
             n_in=n_hidden,
             n_out=n_out,
             activation=outputActivation,

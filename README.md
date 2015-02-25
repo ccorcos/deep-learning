@@ -1,25 +1,25 @@
 # Some Deep Learning models built with Theano
 
 
-branch master to save dbnc
-
-
 ## Refactor
 
 
-dropout!
+rnn, probably need new cost function helpers, etc.
+does dropout work on this now?
+
+LSTM with embedding
+
+multiplicative RNN
+
+multaplicative USE
+
+CNN
+
+DA
 
 
-rnn
 
 
-make this all work for the rnn!
-
-Dropout layer is a simple function
-Error and loss are separate functions
-
-new conventions
-every model needs params, L1, L2_sqr, output, and structural damping for HF
 
 ## To Do
 

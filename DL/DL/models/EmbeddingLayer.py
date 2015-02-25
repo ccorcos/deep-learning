@@ -36,7 +36,6 @@ class EmbeddingLayer(object):
 
         self.W = W
         self.output = T.dot(input, self.W)
-        self.updates = []
        
         self.params = [self.W]
         self.L1 = 0

@@ -13,7 +13,7 @@ class ForwardFeed(object):
     This is just a chain of hidden layers.
     """
 
-    def __init__(self, rng, input, layer_sizes=[], params=None, activation='tanh'):
+    def __init__(self, rng, input, layer_sizes=[], dropout_rate=0, srng=None, params=None, activation='tanh'):
         """Initialize the parameters for the forward feed
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -28,15 +28,21 @@ class ForwardFeed(object):
         output = input
         layers = []
         for i in range(0, len(layer_sizes)-1):
-            h = HiddenLayer(
+            hiddenLayer = HiddenLayer(
                 rng=rng,
                 input=output,
                 params=maybe(lambda: params[i]),
                 n_in=layer_sizes[i],
                 n_out=layer_sizes[i+1],
                 activation=activation)
-            output = h.output
-            layers.append(h)
+
+            h = hiddenLayer.output
+            if dropout_rate > 0:
+                assert(srng is not None)
+                h = dropout(srng, dropout_rate, h)
+
+            output = h
+            layers.append(hiddenLayer)
 
         self.layers = layers
         self.output = output

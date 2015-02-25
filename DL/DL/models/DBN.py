@@ -15,7 +15,7 @@ class DBN(object):
     that has many layers of hidden units and nonlinear activations.
     """
 
-    def __init__(self, rng, input, n_in, n_out, layer_sizes=[], activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, input, n_in, n_out, layer_sizes=[], dropout_rate=0, srng=None, activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -38,7 +38,9 @@ class DBN(object):
             input=input,
             layer_sizes=[n_in] + layer_sizes,
             activation=activation,
-            params=maybe(lambda: params[0])
+            params=maybe(lambda: params[0]),
+            dropout_rate=dropout_rate, 
+            srng=srng,
         )
 
         outputLayer = HiddenLayer(
