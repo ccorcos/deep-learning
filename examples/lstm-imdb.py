@@ -44,8 +44,8 @@ print "loading data to the GPU"
 dataset = load_data(imdb)
 
 print "creating the LSTM"
-x = T.matrix('x')          # input words, (n_examples, maxlen)
-t = T.vector('t')          # targets
+x = T.matrix('x')           # input words, (n_examples, maxlen)
+t = T.vector('t')           # targets
 mask = T.matrix('mask')     # mask for valid words (n_examples, maxlen)
 
 inputs = [x, t, mask]       # the mask comes last!
