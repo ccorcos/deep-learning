@@ -6,7 +6,6 @@
 # import numpy
 from ForwardFeed import ForwardFeed
 from HiddenLayer import HiddenLayer
-import operator
 from ..utils import *
 
 class DBN(object):
@@ -16,7 +15,7 @@ class DBN(object):
     that has many layers of hidden units and nonlinear activations.
     """
 
-    def __init__(self, rng, input, n_in, n_out, layer_sizes=[], dropout_rate=0, activation='tanh', outputActivation='softmax', params=None):
+    def __init__(self, rng, input, n_in, n_out, layer_sizes=[], activation='tanh', outputActivation='softmax', params=None):
         """Initialize the parameters for the multilayer perceptron
 
         rng: random number generator, e.g. numpy.random.RandomState(1234)
@@ -34,32 +33,27 @@ class DBN(object):
         activation: string, nonlinearity to be applied in the hidden layer
         """
 
-        self.ff = ForwardFeed(
+        ff = ForwardFeed(
             rng=rng,
             input=input,
             layer_sizes=[n_in] + layer_sizes,
-            dropout_rate=dropout_rate,
             activation=activation,
             params=maybe(lambda: params[0])
         )
 
-        self.outputLayer = HiddenLayer(
+        outputLayer = HiddenLayer(
             rng=rng,
-            input=self.ff.output,
+            input=ff.output,
             n_in=layer_sizes[-1],
-            dropout_rate=0,
             n_out=n_out,
             activation=outputActivation,
             params=maybe(lambda: params[1])
         )
 
-        self.layers = [self.ff, self.outputLayer]
-        self.params = map(lambda x: x.params, self.layers)
-        self.L1 = reduce(operator.add, map(lambda x: x.L1, self.layers), 0)
-        self.L2_sqr = reduce(operator.add, map(lambda x: x.L2_sqr, self.layers), 0)
-        self.updates = reduce(operator.add, map(lambda x: x.updates, self.layers), [])
+        self.layers = [ff, outputLayer]
 
-        self.loss = self.layers[-1].loss
-        self.errors = self.layers[-1].errors
-        self.output = self.layers[-1].output
-        self.pred = self.layers[-1].pred
+        self.params = layers_params(self.layers)
+        self.L1 = layers_L1(self.layers)
+        self.L2_sqr = layers_L2_sqr(self.layers)
+
+        self.output = outputLayer.output
