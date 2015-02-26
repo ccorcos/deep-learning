@@ -189,15 +189,5 @@ def optimize(dataset=None,
     
     except KeyboardInterrupt:
         print "computing model errors interrupted"
-
     
-    
-
-    # numpy.savez(saveto, history_errs=history_errs, **params)
-    # pkl.dump(model_options, open('%s.pkl' % saveto, 'wb'), -1)
-
-
-
-
-
-
+    return train_loss, valid_loss, test_loss

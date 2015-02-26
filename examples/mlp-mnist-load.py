@@ -18,6 +18,21 @@ print "An MLP on MNIST."
 print "loading MNIST"
 mnist = datasets.mnist()
 
+
+print "loading a previous model"
+l = numpy.load("saved.npz")
+lparams = l['params']
+losses = l['results']
+notes = l['notes']
+
+print "model loaded"
+print notes
+print "errors"
+print "  train: %0.05f" % losses[0]
+print "  validation: %0.05f" % losses[1]
+print "  test: %0.05f" % losses[2]
+print ""
+
 print "loading data to the GPU"
 dataset = load_data(mnist)
 
@@ -36,7 +51,8 @@ mlp = MLP(
     input=x,
     n_in=28 * 28,
     n_hidden=500,
-    n_out=10
+    n_out=10,
+    params=lparams
 )
 
 # regularization
@@ -57,18 +73,20 @@ errors = pred_error(pred, it)
 params = flatten(mlp.params)
 
 
-print "training the MLP with rmsprop"
-optimize(dataset=dataset,
-        inputs=inputs,
-        cost=cost,
-        params=params,
-        errors=errors,
-        n_epochs=5,
-        batch_size=20,
-        patience=5000,
-        patience_increase=1.5,
-        improvement_threshold=0.995,
-        optimizer='rmsprop')
+# print "training the MLP with rmsprop"
+# losses = optimize(
+#     dataset=dataset,
+#     inputs=inputs,
+#     cost=cost,
+#     params=params,
+#     errors=errors,
+#     n_epochs=5,
+#     batch_size=20,
+#     patience=5000,
+#     patience_increase=1.5,
+#     improvement_threshold=0.995,
+#     optimizer='rmsprop'
+# )
 
 print "compiling the prediction function"
 predict = theano.function(inputs=[x], outputs=pred)
@@ -76,3 +94,4 @@ predict = theano.function(inputs=[x], outputs=pred)
 print "predicting the first 10 samples of the test dataset"
 print "predict:", predict(mnist[2][0][0:10])
 print "answer: ", mnist[2][1][0:10]
+

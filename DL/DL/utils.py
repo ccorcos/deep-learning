@@ -99,7 +99,7 @@ def layers_L2_sqr(layers):
     return reduce(operator.add, map(lambda x: x.L2_sqr, layers), 0)
 
 def layers_params(layers):
-    return reduce(operator.add, map(lambda x: x.params, layers), [])
+    return map(lambda x: x.params, layers)
 
 def mse(output, targets):
     return T.mean((output - targets) ** 2)
