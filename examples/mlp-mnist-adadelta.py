@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.MLP import MLP
-from DL.optimizers.adadelta import adadelta
+from DL.optimizers import optimize
 from DL import datasets
 from DL.utils import *
 import time
@@ -58,7 +58,7 @@ errors = pred_error(pred, it)
 params = flatten(mlp.params)
 
 print "training the MLP with adadelta"
-adadelta(dataset=dataset,
+optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
@@ -67,8 +67,10 @@ adadelta(dataset=dataset,
         batch_size=20,
         patience=5000,
         patience_increase=1.5,
-        improvement_threshold=0.995)
+        improvement_threshold=0.995,
+        optimizer="adadelta")
 
+print ""
 print "compiling the prediction function"
 predict = theano.function(inputs=[x], outputs=pred)
 

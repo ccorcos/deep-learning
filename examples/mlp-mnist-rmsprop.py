@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.MLP import MLP
-from DL.optimizers.rmsprop import rmsprop
+from DL.optimizers import optimize
 from DL import datasets
 from DL.utils import *
 import time
@@ -59,7 +59,7 @@ params = flatten(mlp.params)
 
 
 print "training the MLP with rmsprop"
-rmsprop(dataset=dataset,
+optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
@@ -68,7 +68,8 @@ rmsprop(dataset=dataset,
         batch_size=20,
         patience=5000,
         patience_increase=1.5,
-        improvement_threshold=0.995)
+        improvement_threshold=0.995,
+        optimizer="rmsprop")
 
 print "compiling the prediction function"
 predict = theano.function(inputs=[x], outputs=pred)

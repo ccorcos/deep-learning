@@ -7,7 +7,7 @@ import numpy
 from DL.models.LSTM import LSTM
 from DL.models.EmbeddingLayer import EmbeddingLayer
 from DL.models.HiddenLayer import HiddenLayer
-from DL.optimizers.rmsprop import rmsprop
+from DL.optimizers import optimize
 from DL import datasets
 from DL.utils import *
 import time
@@ -52,7 +52,6 @@ inputs = [x, t, mask]       # the mask comes last!
 
 ix = x.astype('int32')      
 it = t.astype('int32')         
-
 
 rng = numpy.random.RandomState(int(time.time())) # random number generator
 srng = T.shared_randomstreams.RandomStreams(int(time.time()))
@@ -109,9 +108,12 @@ layers = [embeddingLayer, lstm, outputLayer]
 L1 = layers_L1(layers)
 L2_sqr = layers_L2_sqr(layers)
 
+# L1 = 0
+# L2_sqr = (lstm.params[0].get_value() ** 2).sum()
+
 # regularization
 L1_reg=0.00
-L2_reg=0.0001
+L2_reg=0.00
 
 # cost function
 cost = (
@@ -126,18 +128,20 @@ errors = pred_error(pred, it)
 
 params = flatten(layers_params(layers))
 
-print "training the LSTM with rmsprop"
-rmsprop(dataset=dataset,
+print "training the LSTM with adadelta"
+optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
         errors=errors,
-        n_epochs=1000,
-        batch_size=100,
-        patience=500,
-        patience_increase=1.5,
+        n_epochs=200,
+        batch_size=64,
+        patience=1500,
+        patience_increase=1.25,
         improvement_threshold=0.995,
-        test_batches=1)
+        test_batches=1,
+        print_cost=True,
+        optimizer="adadelta")
 
 print "compiling the prediction function"
 predict = theano.function(inputs=[x, mask], outputs=pred)

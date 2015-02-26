@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.RNN import RNN
-from DL.optimizers.rmsprop import rmsprop
+from DL.optimizers import optimize
 from DL.utils import *
 import time
 import matplotlib.pyplot as plt
@@ -87,7 +87,7 @@ params = flatten(rnn.params)
 
 print "training the rnn with rmsprop"
 
-rmsprop(dataset=dataset,
+optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
@@ -96,7 +96,8 @@ rmsprop(dataset=dataset,
         batch_size=100,
         patience=1000,
         patience_increase=2.,
-        improvement_threshold=0.9995)
+        improvement_threshold=0.9995,
+        optimizer="rmsprop")
 
 print "compiling the prediction function"
 

@@ -22,7 +22,7 @@ class EmbeddingLayer(object):
 
         if W is None:
             W_values = numpy.asarray(
-                rng.randn(n_in, n_out),
+                rng.rand(n_in, n_out),
                 dtype=theano.config.floatX
             )
 
@@ -40,4 +40,4 @@ class EmbeddingLayer(object):
 
         self.params = [W]
         self.L1 = 0
-        self.L2_sqr = (W ** 2).sum()
+        self.L2_sqr = 0

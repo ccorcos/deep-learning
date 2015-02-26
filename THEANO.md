@@ -22,8 +22,12 @@ Then make sure you set the flag when you run it.
 
     THEANO_FLAGS="optimizer=None,compute_test_value=raise" python program.py
 
+    THEANO_FLAGS="exception_verbosity=high"
+    
 # Parallelization
 
 On Mac, you can use the GPU if you have a newer machine with an NVIDIA graphics card. 
 
 Theano uses the OS X Accelerate framework for BLAS and other optimizations.
+
+

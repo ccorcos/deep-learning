@@ -9,14 +9,12 @@ from DL.optimizers import optimize
 from DL import datasets
 from DL.utils import *
 import time
-# from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 # hide warnings
 import warnings
 warnings.simplefilter("ignore")
 
-
-print "An MLP with dropout on MNIST."
+print "An MLP on MNIST."
 print "loading MNIST"
 mnist = datasets.mnist()
 
@@ -31,8 +29,6 @@ inputs = [x, t]
 it = t.astype('int64')
 
 rng = numpy.random.RandomState(int(time.time())) # random number generator
-# srng = RandomStreams(int(time.time()))
-srng = T.shared_randomstreams.RandomStreams(int(time.time()))
 
 # construct the MLP class
 mlp = MLP(
@@ -40,9 +36,7 @@ mlp = MLP(
     input=x,
     n_in=28 * 28,
     n_hidden=500,
-    n_out=10,
-    dropout_rate=0.5,
-    srng=srng
+    n_out=10
 )
 
 # regularization
@@ -62,29 +56,23 @@ errors = pred_error(pred, it)
 
 params = flatten(mlp.params)
 
+
 print "training the MLP with rmsprop"
 optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
         errors=errors,
-        n_epochs=1000,
+        n_epochs=5,
         batch_size=20,
         patience=5000,
         patience_increase=1.5,
         improvement_threshold=0.995,
-        optimizer="rmsprop")
+        optimizer='rmsprop')
 
 print "compiling the prediction function"
 predict = theano.function(inputs=[x], outputs=pred)
-distribution = theano.function(inputs=[x], outputs=mlp.output)
 
 print "predicting the first 10 samples of the test dataset"
 print "predict:", predict(mnist[2][0][0:10])
 print "answer: ", mnist[2][1][0:10]
-
-print "with dropout, the output distributions should all be slightly different"
-print "predict:", distribution(mnist[2][0][0:1])
-print "predict:", distribution(mnist[2][0][0:1])
-print "predict:", distribution(mnist[2][0][0:1])
-print "predict:", distribution(mnist[2][0][0:1])

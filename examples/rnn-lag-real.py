@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.RNN import RNN
-from DL.optimizers.rmsprop import rmsprop
+from DL.optimizers import optimize
 from DL.utils import *
 import time
 import matplotlib.pyplot as plt
@@ -42,7 +42,7 @@ lagData = ((seq[0:trainIdx,:,:], targets[0:trainIdx,:,:]),
            (seq[validIdx:,:,:], targets[validIdx:,:,:]))
 
 print "loading data to the GPU"
-dataset = load_data(lagData, types=["float32", "float32"])
+dataset = load_data(lagData)
 
 print "creating the RNN"
 x = T.tensor3('x')  # input
@@ -76,7 +76,7 @@ params = flatten(rnn.params)
 
 print "training the rnn with rmsprop"
 
-rmsprop(dataset=dataset,
+optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
@@ -85,7 +85,8 @@ rmsprop(dataset=dataset,
         batch_size=20,
         patience=1000,
         patience_increase=1.5,
-        improvement_threshold=0.995)
+        improvement_threshold=0.995,
+        optimizer="rmsprop")
 
 print "compiling the prediction function"
 

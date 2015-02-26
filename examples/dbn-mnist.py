@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import numpy
 from DL.models.DBN import DBN
-from DL.optimizers.rmsprop import rmsprop
+from DL.optimizers import optimize
 from DL import datasets
 from DL.utils import *
 import warnings
@@ -60,7 +60,7 @@ params = flatten(dbn.params)
 
 print "training the dbn with rmsprop"
 
-rmsprop(dataset=dataset,
+optimize(dataset=dataset,
         inputs=inputs,
         cost=cost,
         params=params,
@@ -69,7 +69,8 @@ rmsprop(dataset=dataset,
         batch_size=20,
         patience=10000,
         patience_increase=1.25,
-        improvement_threshold=0.995)
+        improvement_threshold=0.995,
+        optimizer="rmsprop")
 
 print "compiling the prediction function"
 
